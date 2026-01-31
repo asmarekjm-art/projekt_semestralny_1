@@ -156,9 +156,40 @@ btn_analiza = tk.Button(okno, text="Analizuj", command=analizuj)
 btn_analiza.pack(pady=5)
 
 
-# pole do wyświetlania tabeli
-pole_tekstowe = tk.Text(okno, wrap="none")
-pole_tekstowe.pack(fill="both", expand=True)
+
+tk.Label(ramka_przyciski, text="Płeć").pack()
+tk.Checkbutton(ramka_przyciski, text="Kobiety", variable=var_k).pack()
+tk.Checkbutton(ramka_przyciski, text="Mężczyźni", variable=var_m).pack()
+
+
+tk.Label(ramka_przyciski, text="Wiek od").pack()
+entry_min = tk.Entry(ramka_przyciski)
+entry_min.pack()
+
+tk.Label(ramka_przyciski, text="Wiek do").pack()
+entry_max = tk.Entry(ramka_przyciski)
+entry_max.pack()
+
+
+tk.Label(ramka_przyciski, text="Cukrzyca").pack()
+tk.Checkbutton(ramka_przyciski, text="tak", variable=var_cuk_tak).pack()
+tk.Checkbutton(ramka_przyciski, text="nie", variable=var_cuk_nie).pack()
+
+
+tk.Label(ramka_przyciski, text="Nadciśnienie").pack()
+tk.Checkbutton(ramka_przyciski, text="tak", variable=var_nad_tak).pack()
+tk.Checkbutton(ramka_przyciski, text="nie", variable=var_nad_nie).pack()
+
+
+tk.Button(ramka_przyciski, text="Zastosuj filtry", width=22, command=filtruj_dane).pack(pady=6)
+
+tk.Button(ramka_przyciski, text="Wykres BMI", width=22, command=wykres_bmi).pack(pady=4)
+
+tk.Button(ramka_przyciski, text="BMI vs wiek, plec oraz tętno", width=22,
+          command=wykres_bmi_wiek_plec_tetno).pack(pady=4)
+
+ramka_wykres = tk.Frame(okno)
+ramka_wykres.pack(side="bottom", fill="both", expand=True)
 
 
 okno.mainloop()
