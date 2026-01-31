@@ -9,3 +9,9 @@ try:
     print(df.to_string())
 except Exception as e:
     print("\nBŁĄD:", e)
+
+print("\n=== KOBIETY ===")
+print(kobiety.to_string())
+
+print("\n=== MĘŻCZYŹNI ===")
+print(mezczyzni.to_string())
