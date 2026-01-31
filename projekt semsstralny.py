@@ -34,6 +34,49 @@ mezczyzni = df[df["plec"] == "M"]
     except Exception as e:
         messagebox.showerror("Błąd", str(e))
 
+# ======================
+# WYKRES BMI vs wiek (K/M)
+# ======================
+def wykres_bmi():
+    global df
+
+    if df is None:
+        return
+
+    dane = df.copy()
+
+    # grupy wiekowe
+    dane["grupa"] = pd.cut(
+        dane["wiek"],
+        bins=[0, 20, 40, 60, 80, 200],
+        labels=["<20", "20–40", "40–60", "60–80", "80+"],
+        right=False
+    )
+
+    # średnie BMI dla K i M
+    tabela = (
+        dane
+        .groupby(["grupa", "plec"])["BMI"]
+        .mean()
+        .unstack()
+        .round(1)
+    )
+
+    x = range(len(tabela.index))
+
+    plt.figure(figsize=(7,4))
+
+    plt.bar([i-0.2 for i in x], tabela["K"], width=0.4, label="Kobiety")
+    plt.bar([i+0.2 for i in x], tabela["M"], width=0.4, label="Mężczyźni")
+
+    plt.xticks(x, tabela.index.astype(str))
+    plt.xlabel("Grupa wiekowa")
+    plt.ylabel("Średnie BMI")
+    plt.title("BMI vs grupy wiekowe dla kobiet i mezczyzn")
+    plt.legend()
+
+    plt.show()
+
 
 # ======================
 # pusty przycisk (na przyszłość)
