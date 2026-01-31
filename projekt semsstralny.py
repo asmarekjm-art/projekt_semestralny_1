@@ -15,3 +15,10 @@ print(kobiety.to_string())
 
 print("\n=== MĘŻCZYŹNI ===")
 print(mezczyzni.to_string())
+# wyliczenie sredniego wieku dla kazdej płci
+
+kobiety = df[df["plec"] == "K"]
+mezczyzni = df[df["plec"] == "M"]
+
+print("Średni wiek kobiet:", kobiety["wiek"].mean())
+print("Średni wiek mężczyzn:", mezczyzni["wiek"].mean())
