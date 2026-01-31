@@ -38,8 +38,63 @@ mezczyzni = df[df["plec"] == "M"]
 # ======================
 # pusty przycisk (na przyszłość)
 # ======================
-def analizuj():
-    messagebox.showinfo("Info", "Tu później dodamy analizę 😉")
+# FILTR WIEKU
+# ======================
+def filtruj_wiek():
+    global df
+
+    if df is None:
+        return
+
+    try:
+        min_wiek = int(entry_min.get())
+        max_wiek = int(entry_max.get())
+
+        dane = df[(df["wiek"] >= min_wiek) & (df["wiek"] <= max_wiek)]
+        pokaz(dane)
+
+    except:
+        messagebox.showwarning("Błąd", "Podaj liczby wieku")
+
+
+# ======================
+# MIN / MAX
+# ======================
+def pokaz_minmax():
+    global df
+
+    if df is None:
+        return
+
+    txt = (
+        f"Wiek      min: {df['wiek'].min()}   max: {df['wiek'].max()}\n"
+        f"BMI       min: {df['BMI'].min():.1f}   max: {df['BMI'].max():.1f}\n"
+        f"Ciśnienie min: {df['cisnienie'].min()}   "
+        f"max: {df['cisnienie'].max()}"
+    )
+
+    pole.delete(1.0, tk.END)
+    pole.insert(tk.END, txt)
+
+def wykres_cisnienia():
+    global df
+
+    if df is None:
+        return
+
+    dane = df.copy()
+
+    dane["grupa"] = pd.cut(
+        dane["wiek"],
+        bins=[0, 20, 40, 60, 80, 200],
+        labels=["<20", "20–40", "40–60", "60–80", "80+"],
+        right=False
+    )
+
+    srednie = dane.groupby("grupa")["cisnienie_skurczowe"].mean()
+
+    plt.figure(figsize=(6,4))
+    plt.bar(srednie.index.astype(str), srednie.values)
 
 
 # ======================
