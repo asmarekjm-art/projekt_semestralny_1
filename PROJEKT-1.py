@@ -23,3 +23,4 @@ def wczytaj_dane():
         pokaz(df)
     except Exception as e:
         messagebox.showerror("Błąd", str(e))
+{:  for  in {:  for  in }}
