@@ -216,6 +216,47 @@ def wykres_leki_cisnienie():
     canvas.draw()
     canvas.get_tk_widget().pack(fill="both", expand=True)
 
+# nodcisnienie wykres
+def wykres_nadcisnienie_kolowy():
+    global df, canvas
+
+    if df is None:
+        messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
+        return
+
+    if "nadcisnienie" not in df.columns:
+        messagebox.showwarning("Błąd", "Brak danych o nadciśnieniu")
+        return
+
+    if canvas:
+        canvas.get_tk_widget().destroy()
+
+    counts = df["nadcisnienie"].value_counts()
+
+    labels = ["Nadciśnienie", "Brak nadciśnienia"]
+    values = [
+        counts.get("tak", 0),
+        counts.get("nie", 0)
+    ]
+
+    fig = Figure(figsize=(5, 4))
+    ax = fig.add_subplot(111)
+
+    ax.pie(
+        values,
+        labels=labels,
+        autopct="%1.1f%%",
+        colors=["red", "green"],
+        startangle=90
+    )
+
+    ax.set_title("Procent pacjentów z nadciśnieniem")
+
+    canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
+    canvas.draw()
+    canvas.get_tk_widget().pack(fill="both", expand=True)
+
+
 # ======================
 # GUI
 # ======================
@@ -259,11 +300,17 @@ tk.Button(
 
 tk.Button(
     ramka_przyciski,
-    text="Leki a ciśnienie",
+    text="Ciśnienie a leki",
     width=22,
     command=wykres_leki_cisnienie
 ).pack(pady=4)
 
+tk.Button(
+    ramka_przyciski,
+    text="Nadciśnienie %",
+    width=22,
+    command=wykres_nadcisnienie_kolowy
+).pack(pady=4)
 
 
 # ===== FILTRY =====
