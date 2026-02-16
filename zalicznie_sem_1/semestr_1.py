@@ -161,6 +161,60 @@ def wykres_bmi():
     canvas.draw()
     canvas.get_tk_widget().pack(fill="both", expand=True)
 
+#==================
+# leki a cisnienie
+#==================
+def wykres_leki_cisnienie():
+    global df, canvas
+
+    if df is None:
+        messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
+        return
+
+    if "leki_na_cisnienie" not in df.columns or "cisnienie" not in df.columns:
+        messagebox.showwarning("Błąd", "Brak danych o lekach lub ciśnieniu")
+        return
+
+    if canvas:
+        canvas.get_tk_widget().destroy()
+
+    # pobierz skurczowe
+    def skurczowe(val):
+        try:
+            return int(str(val).split("/")[0])
+        except:
+            return None
+
+    df["cis_sk"] = df["cisnienie"].apply(skurczowe)
+
+    z_lekami = df[df["leki_na_cisnienie"] != "brak lekow"]["cis_sk"].dropna()
+    bez_lekow = df[df["leki_na_cisnienie"] == "brak lekow"]["cis_sk"].dropna()
+
+    fig = Figure(figsize=(6, 4))
+    ax = fig.add_subplot(111)
+
+    # punkty pacjentów
+    ax.scatter([1]*len(bez_lekow), bez_lekow, alpha=0.4, color="orange", label="Bez leków")
+    ax.scatter([2]*len(z_lekami), z_lekami, alpha=0.4, color="blue", label="Z lekami")
+
+    # średnie
+    ax.scatter(1, bez_lekow.mean(), color="black", s=80, marker="D")
+    ax.scatter(2, z_lekami.mean(), color="black", s=80, marker="D")
+
+    # linia nadciśnienia
+    ax.axhline(140, linestyle="--", color="red", label="Nadciśnienie ≥140")
+
+    ax.set_xticks([1, 2])
+    ax.set_xticklabels(["Bez leków", "Z lekami"])
+
+    ax.set_ylabel("Ciśnienie skurczowe")
+    ax.set_title("Ciśnienie vs leczenie")
+    ax.grid(alpha=0.3)
+    ax.legend()
+
+    canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
+    canvas.draw()
+    canvas.get_tk_widget().pack(fill="both", expand=True)
 
 # ======================
 # GUI
@@ -193,17 +247,8 @@ scroll.config(command=pole.yview)
 ramka_przyciski = tk.Frame(okno)
 ramka_przyciski.pack(side="right", fill="y", padx=10, pady=10)
 
-# ===== PRZYCISKI =====
-tk.Button(ramka_przyciski, text="Wczytaj CSV", width=22, command=wczytaj_dane).pack(pady=4)
 
-tk.Button(
-    ramka_przyciski,
-    text="Filtruj dane",
-    width=22,
-    bg="#4CAF50",
-    fg="white",
-    command=filtruj_dane
-).pack(pady=6)
+tk.Button(ramka_przyciski, text="Wczytaj CSV", width=22, command=wczytaj_dane).pack(pady=4)
 
 tk.Button(
     ramka_przyciski,
@@ -211,6 +256,15 @@ tk.Button(
     width=22,
     command=wykres_bmi
 ).pack(pady=4)
+
+tk.Button(
+    ramka_przyciski,
+    text="Leki a ciśnienie",
+    width=22,
+    command=wykres_leki_cisnienie
+).pack(pady=4)
+
+
 
 # ===== FILTRY =====
 tk.Label(ramka_przyciski, text="Płeć").pack()
@@ -233,5 +287,13 @@ tk.Label(ramka_przyciski, text="Nadciśnienie").pack()
 tk.Checkbutton(ramka_przyciski, text="tak", variable=var_nad_tak).pack()
 tk.Checkbutton(ramka_przyciski, text="nie", variable=var_nad_nie).pack()
 
+tk.Button(
+    ramka_przyciski,
+    text="Filtruj dane",
+    width=22,
+    bg="#4CAF50",
+    fg="white",
+    command=filtruj_dane
+).pack(pady=6)
 # ===== START =====
 okno.mainloop()
