@@ -1,0 +1,8 @@
+K/1,Henryk Sienkiewicz,W pustyni i w puszczy
+L/2,Bolesłąw Prus,Lalka
+M/3,Alexandre Dumas,Trzej muszkieterowie
+M/6,Henryk Sienkiewicz,Quo vadis
+K/2,Alexandre Dumas,Hrabia Monte Christo
+L/10,Jan Brzechwa,Bajki
+P/1,Julian Tuwim,Kwiaty polskie
+P/2,A.A. Milne,Kubuś Puchatek

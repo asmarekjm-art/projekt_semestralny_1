@@ -1,0 +1,4 @@
+Zestawienie parceli:
+1+5+6: pole = 7
+2: pole = 3
+3+4: pole = 2
