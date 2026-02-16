@@ -255,6 +255,7 @@ def wykres_nadcisnienie_kolowy():
     canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
     canvas.draw()
     canvas.get_tk_widget().pack(fill="both", expand=True)
+
 #=========
 #wykres cykrzyca podział na typ 1 i 2 oraz brak
 
@@ -296,6 +297,47 @@ def wykres_cukrzyca_typ_kolowy():
     canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
     canvas.draw()
     canvas.get_tk_widget().pack(fill="both", expand=True)
+
+#======
+# wykres słupkowy lekow na cukrzyce
+
+def wykres_leki_cukrzyca():
+    global df, canvas
+
+    if df is None:
+        messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
+        return
+
+    if "leki_na_cukrzyce" not in df.columns or "cukrzyca" not in df.columns:
+        messagebox.showwarning("Błąd", "Brak danych o cukrzycy lub lekach")
+        return
+
+    if canvas:
+        canvas.get_tk_widget().destroy()
+
+    # tylko osoby z cukrzycą
+    dane_cukrzyca = df[df["cukrzyca"] == "tak"].copy()
+
+    # brak leków jeśli puste
+    dane_cukrzyca["leki_na_cukrzyce"] = dane_cukrzyca["leki_na_cukrzyce"].replace("", "brak leków")
+
+    counts = dane_cukrzyca["leki_na_cukrzyce"].value_counts()
+
+    fig = Figure(figsize=(6, 4))
+    ax = fig.add_subplot(111)
+
+    ax.bar(counts.index, counts.values, color="purple", alpha=0.7)
+
+    ax.set_ylabel("Liczba pacjentów")
+    ax.set_title(f"Leczenie cukrzycy (N={len(dane_cukrzyca)})")
+    ax.grid(axis="y", alpha=0.3)
+
+    ax.set_xticklabels(counts.index, rotation=30, ha="right")
+
+    canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
+    canvas.draw()
+    canvas.get_tk_widget().pack(fill="both", expand=True)
+
 
 
 # ======================
@@ -358,6 +400,13 @@ tk.Button(
     text="Cukrzyca typy %",
     width=22,
     command=wykres_cukrzyca_typ_kolowy
+).pack(pady=4)
+
+tk.Button(
+    ramka_przyciski,
+    text="Leki na cukrzycę",
+    width=22,
+    command=wykres_leki_cukrzyca
 ).pack(pady=4)
 
 # ===== FILTRY =====
