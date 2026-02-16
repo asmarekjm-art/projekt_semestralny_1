@@ -7,6 +7,7 @@ from matplotlib.figure import Figure
 df = None
 canvas = None
 
+
 def wczytaj_dane():
     global df
 
@@ -74,7 +75,76 @@ def filtruj_dane():
     pokaz(dane)
 
 
-# ===== GUI =====
+# ======================
+# GUI
+# ======================
 okno = tk.Tk()
-...
+okno.title("Analiza pacjentów")
+okno.geometry("900x500")
+
+# ===== ZMIENNE GUI =====
+var_k = tk.BooleanVar(value=True)
+var_m = tk.BooleanVar(value=True)
+var_cuk_tak = tk.BooleanVar(value=True)
+var_cuk_nie = tk.BooleanVar(value=True)
+var_nad_tak = tk.BooleanVar(value=True)
+var_nad_nie = tk.BooleanVar(value=True)
+
+# ===== LEWA STRONA — TABELA =====
+ramka_tabela = tk.Frame(okno)
+ramka_tabela.pack(side="left", fill="both", expand=True)
+
+scroll = tk.Scrollbar(ramka_tabela)
+scroll.pack(side="right", fill="y")
+
+pole = tk.Text(ramka_tabela, wrap="none", yscrollcommand=scroll.set)
+pole.pack(side="left", fill="both", expand=True)
+
+scroll.config(command=pole.yview)
+
+# ===== PRAWA STRONA — PANEL =====
+ramka_przyciski = tk.Frame(okno)
+ramka_przyciski.pack(side="right", fill="y", padx=10, pady=10)
+
+# ===== PRZYCISKI =====
+tk.Button(ramka_przyciski, text="Wczytaj CSV", width=22, command=wczytaj_dane).pack(pady=4)
+
+tk.Button(
+    ramka_przyciski,
+    text="Filtruj dane",
+    width=22,
+    bg="#4CAF50",
+    fg="white",
+    command=filtruj_dane
+).pack(pady=6)
+
+tk.Button(
+    ramka_przyciski,
+    text="Wykres BMI",
+    width=22,
+    command=wykres_bmi
+).pack(pady=4)
+
+# ===== FILTRY =====
+tk.Label(ramka_przyciski, text="Płeć").pack()
+tk.Checkbutton(ramka_przyciski, text="K", variable=var_k).pack()
+tk.Checkbutton(ramka_przyciski, text="M", variable=var_m).pack()
+
+tk.Label(ramka_przyciski, text="Wiek od").pack()
+entry_min = tk.Entry(ramka_przyciski)
+entry_min.pack()
+
+tk.Label(ramka_przyciski, text="Wiek do").pack()
+entry_max = tk.Entry(ramka_przyciski)
+entry_max.pack()
+
+tk.Label(ramka_przyciski, text="Cukrzyca").pack()
+tk.Checkbutton(ramka_przyciski, text="tak", variable=var_cuk_tak).pack()
+tk.Checkbutton(ramka_przyciski, text="nie", variable=var_cuk_nie).pack()
+
+tk.Label(ramka_przyciski, text="Nadciśnienie").pack()
+tk.Checkbutton(ramka_przyciski, text="tak", variable=var_nad_tak).pack()
+tk.Checkbutton(ramka_przyciski, text="nie", variable=var_nad_nie).pack()
+
+# ===== START PROGRAMU =====
 okno.mainloop()
