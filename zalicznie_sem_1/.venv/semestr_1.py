@@ -123,26 +123,39 @@ def wykres_bmi():
         messagebox.showwarning("Błąd", "Brak kolumn BMI lub plec")
         return
 
-    # usuń poprzedni wykres
     if canvas:
         canvas.get_tk_widget().destroy()
 
     kobiety = df[df["plec"] == "K"]["BMI"]
     mezczyzni = df[df["plec"] == "M"]["BMI"]
 
-    fig = Figure(figsize=(6, 4))
-    ax = fig.add_subplot(111)
+    fig = Figure(figsize=(8, 4))
 
-    ax.hist(kobiety, bins=10, alpha=0.6, label="Kobiety")
-    ax.hist(mezczyzni, bins=10, alpha=0.6, label="Mężczyźni")
+    ax1 = fig.add_subplot(121)
+    ax2 = fig.add_subplot(122)
 
-    ax.axvline(18.5, linestyle="--", label="Niedowaga")
-    ax.axvline(25, linestyle="--", label="Nadwaga")
+    # ===== Kobiety =====
+    ax1.hist(kobiety, bins=15, color="pink", alpha=0.7)
+    ax1.axvline(18.5, linestyle="--", color="red")
+    ax1.axvline(25, linestyle="--", color="green")
 
-    ax.set_title("Rozkład BMI — Kobiety vs Mężczyźni")
-    ax.set_xlabel("BMI")
-    ax.set_ylabel("Liczba pacjentów")
-    ax.legend()
+    ax1.set_title("Kobiety")
+    ax1.set_xlabel("BMI")
+    ax1.set_ylabel("Liczba pacjentów")
+    ax1.set_xlim(15, 45)
+    ax1.grid(alpha=0.3)
+
+    # ===== Mężczyźni =====
+    ax2.hist(mezczyzni, bins=15, color="lightblue", alpha=0.7)
+    ax2.axvline(18.5, linestyle="--", color="red")
+    ax2.axvline(25, linestyle="--", color="green")
+
+    ax2.set_title("Mężczyźni")
+    ax2.set_xlabel("BMI")
+    ax2.set_xlim(15, 45)
+    ax2.grid(alpha=0.3)
+
+    fig.suptitle("Rozkład BMI według płci")
 
     canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
     canvas.draw()
