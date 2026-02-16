@@ -8,19 +8,53 @@ df = None
 canvas = None
 
 
+# ======================
+# WCZYTYWANIE CSV
+# ======================
 def wczytaj_dane():
     global df
 
-    sciezka = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
+    path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
 
-    if not sciezka:
+    if not path:
         return
 
     try:
-        df = pd.read_csv(sciezka)
+        df = pd.read_csv(path)
+
+        # ===== oblicz BMI jeśli są dane =====
+        if "waga" in df.columns and "wzrost" in df.columns:
+            df["BMI"] = df["waga"] / (df["wzrost"] / 100) ** 2
+
+        # ===== nadciśnienie z ciśnienia =====
+        if "cisnienie" in df.columns:
+            def nadcisnienie(val):
+                try:
+                    s, d = val.split("/")
+                    return "tak" if int(s) >= 140 or int(d) >= 90 else "nie"
+                except:
+                    return "nie"
+
+            df["nadcisnienie"] = df["cisnienie"].apply(nadcisnienie)
+
         pokaz(df)
+        messagebox.showinfo("Sukces", "Dane wczytane poprawnie")
+
     except Exception as e:
-        messagebox.showerror("Błąd", str(e))
+        messagebox.showerror("Błąd", f"Nie udało się wczytać pliku:\n{e}")
+
+
+# ======================
+# POKAZ DANE
+# ======================
+def pokaz(dane):
+    pole.delete("1.0", tk.END)
+    pole.insert(tk.END, dane.to_string())
+
+
+# ======================
+# FILTRUJ
+# ======================
 def filtruj_dane():
     global df
 
@@ -69,10 +103,50 @@ def filtruj_dane():
     if var_nad_nie.get():
         nad.append("nie")
 
-    if nad:
+    if nad and "nadcisnienie" in dane.columns:
         dane = dane[dane["nadcisnienie"].isin(nad)]
 
     pokaz(dane)
+
+
+# ======================
+# WYKRES BMI
+# ======================
+def wykres_bmi():
+    global df, canvas
+
+    if df is None:
+        messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
+        return
+
+    if "BMI" not in df.columns or "plec" not in df.columns:
+        messagebox.showwarning("Błąd", "Brak kolumn BMI lub plec")
+        return
+
+    # usuń poprzedni wykres
+    if canvas:
+        canvas.get_tk_widget().destroy()
+
+    kobiety = df[df["plec"] == "K"]["BMI"]
+    mezczyzni = df[df["plec"] == "M"]["BMI"]
+
+    fig = Figure(figsize=(6, 4))
+    ax = fig.add_subplot(111)
+
+    ax.hist(kobiety, bins=10, alpha=0.6, label="Kobiety")
+    ax.hist(mezczyzni, bins=10, alpha=0.6, label="Mężczyźni")
+
+    ax.axvline(18.5, linestyle="--", label="Niedowaga")
+    ax.axvline(25, linestyle="--", label="Nadwaga")
+
+    ax.set_title("Rozkład BMI — Kobiety vs Mężczyźni")
+    ax.set_xlabel("BMI")
+    ax.set_ylabel("Liczba pacjentów")
+    ax.legend()
+
+    canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
+    canvas.draw()
+    canvas.get_tk_widget().pack(fill="both", expand=True)
 
 
 # ======================
@@ -80,9 +154,9 @@ def filtruj_dane():
 # ======================
 okno = tk.Tk()
 okno.title("Analiza pacjentów")
-okno.geometry("900x500")
 
-# ===== ZMIENNE GUI =====
+
+# ===== ZMIENNE =====
 var_k = tk.BooleanVar(value=True)
 var_m = tk.BooleanVar(value=True)
 var_cuk_tak = tk.BooleanVar(value=True)
@@ -90,7 +164,7 @@ var_cuk_nie = tk.BooleanVar(value=True)
 var_nad_tak = tk.BooleanVar(value=True)
 var_nad_nie = tk.BooleanVar(value=True)
 
-# ===== LEWA STRONA — TABELA =====
+# ===== LEWA STRONA =====
 ramka_tabela = tk.Frame(okno)
 ramka_tabela.pack(side="left", fill="both", expand=True)
 
@@ -102,7 +176,7 @@ pole.pack(side="left", fill="both", expand=True)
 
 scroll.config(command=pole.yview)
 
-# ===== PRAWA STRONA — PANEL =====
+# ===== PRAWA STRONA =====
 ramka_przyciski = tk.Frame(okno)
 ramka_przyciski.pack(side="right", fill="y", padx=10, pady=10)
 
@@ -146,5 +220,5 @@ tk.Label(ramka_przyciski, text="Nadciśnienie").pack()
 tk.Checkbutton(ramka_przyciski, text="tak", variable=var_nad_tak).pack()
 tk.Checkbutton(ramka_przyciski, text="nie", variable=var_nad_nie).pack()
 
-# ===== START PROGRAMU =====
+# ===== START =====
 okno.mainloop()
