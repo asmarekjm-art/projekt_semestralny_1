@@ -255,6 +255,47 @@ def wykres_nadcisnienie_kolowy():
     canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
     canvas.draw()
     canvas.get_tk_widget().pack(fill="both", expand=True)
+#=========
+#wykres cykrzyca podział na typ 1 i 2 oraz brak
+
+def wykres_cukrzyca_typ_kolowy():
+    global df, canvas
+
+    if df is None:
+        messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
+        return
+
+    if "cukrzyca" not in df.columns:
+        messagebox.showwarning("Błąd", "Brak danych o cukrzycy")
+        return
+
+    if canvas:
+        canvas.get_tk_widget().destroy()
+
+    # liczby
+    brak = len(df[df["cukrzyca"] == "nie"])
+    typ1 = len(df[df["typ_cukrzycy"] == "typ 1"])
+    typ2 = len(df[df["typ_cukrzycy"] == "typ 2"])
+
+    labels = ["Brak cukrzycy", "Typ 1", "Typ 2"]
+    values = [brak, typ1, typ2]
+
+    fig = Figure(figsize=(5, 4))
+    ax = fig.add_subplot(111)
+
+    ax.pie(
+        values,
+        labels=labels,
+        autopct="%1.1f%%",
+        colors=["green", "orange", "red"],
+        startangle=90
+    )
+
+    ax.set_title(f"Cukrzyca w populacji (N={len(df)})")
+
+    canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
+    canvas.draw()
+    canvas.get_tk_widget().pack(fill="both", expand=True)
 
 
 # ======================
@@ -312,6 +353,12 @@ tk.Button(
     command=wykres_nadcisnienie_kolowy
 ).pack(pady=4)
 
+tk.Button(
+    ramka_przyciski,
+    text="Cukrzyca typy %",
+    width=22,
+    command=wykres_cukrzyca_typ_kolowy
+).pack(pady=4)
 
 # ===== FILTRY =====
 tk.Label(ramka_przyciski, text="Płeć").pack()
