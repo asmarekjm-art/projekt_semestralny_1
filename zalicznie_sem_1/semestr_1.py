@@ -7,6 +7,9 @@ from matplotlib.figure import Figure
 df = None
 canvas = None
 
+df_filtered = None
+
+
 
 # ======================
 # WCZYTYWANIE CSV
@@ -105,6 +108,9 @@ def filtruj_dane():
 
     if nad and "nadcisnienie" in dane.columns:
         dane = dane[dane["nadcisnienie"].isin(nad)]
+
+    global df_filtered
+    df_filtered = dane
 
     pokaz(dane)
 
@@ -291,13 +297,14 @@ def wykres_leki_cukrzyca():
 
 #+=============
 # eksport danych do pliku .csv
-
 def eksport_csv():
-    global df
+    global df, df_filtered
 
     if df is None:
         messagebox.showwarning("Brak danych", "Najpierw wczytaj dane")
         return
+
+    dane_do_zapisu = df_filtered if df_filtered is not None else df
 
     path = filedialog.asksaveasfilename(
         defaultextension=".csv",
@@ -307,9 +314,13 @@ def eksport_csv():
     if not path:
         return
 
-    df.to_csv(path, index=False)
+    dane_do_zapisu.to_csv(path, index=False)
 
-    messagebox.showinfo("Sukces", "Plik zapisany")
+    messagebox.showinfo(
+        "Sukces",
+        f"Zapisano {len(dane_do_zapisu)} rekordów"
+    )
+
 
 # ======================
 # GUI
@@ -403,13 +414,15 @@ tk.Button(
     command=filtruj_dane
 ).pack(pady=6)
 
-
 tk.Button(
     ramka_przyciski,
-    text="Eksport CSV",
+    text="Eksport danych",
     width=22,
+    bg="#4CAF50",      # zielony
+    fg="white",        # biały tekst
     command=eksport_csv
 ).pack(pady=4)
+
 
 # ===== START =====
 okno.mainloop()
