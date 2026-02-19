@@ -160,7 +160,46 @@ def wykres_bmi():
     canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
     canvas.draw()
     canvas.get_tk_widget().pack(fill="both", expand=True)
+#=====
+#nadcisnienie
+def wykres_nadcisnienie_kolowy():
+    global df, canvas
 
+    if df is None:
+        messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
+        return
+
+    if "nadcisnienie" not in df.columns:
+        messagebox.showwarning("Błąd", "Brak danych o nadciśnieniu")
+        return
+
+    if canvas:
+        canvas.get_tk_widget().destroy()
+
+    counts = df["nadcisnienie"].value_counts()
+
+    labels = ["Nadciśnienie", "Brak nadciśnienia"]
+    values = [
+        counts.get("tak", 0),
+        counts.get("nie", 0)
+    ]
+
+    fig = Figure(figsize=(5, 4))
+    ax = fig.add_subplot(111)
+
+    ax.pie(
+        values,
+        labels=labels,
+        autopct="%1.1f%%",
+        colors=["red", "green"],
+        startangle=90
+    )
+
+    ax.set_title(f"Procent pacjentów z nadciśnieniem (N={len(df)})")
+
+    canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
+    canvas.draw()
+    canvas.get_tk_widget().pack(fill="both", expand=True)
 
 
 #=========
