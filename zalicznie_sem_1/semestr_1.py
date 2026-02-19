@@ -248,6 +248,7 @@ def wykres_cukrzyca_typ_kolowy():
 
     canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
     canvas.draw()
+
     canvas.get_tk_widget().pack(fill="both", expand=True)
 
 #======
@@ -288,8 +289,7 @@ def wykres_leki_cukrzyca():
     ax.set_ylabel("Liczba pacjentów")
     ax.set_title(f"Leczenie cukrzycy (N={len(dane_cukrzyca)})")
     ax.grid(axis="y", alpha=0.3)
-
-
+    fig.tight_layout()
 
     canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
     canvas.draw()
@@ -354,6 +354,9 @@ ramka_przyciski = tk.Frame(okno)
 ramka_przyciski.pack(side="right", fill="y", padx=10, pady=10)
 
 
+
+
+
 tk.Button(ramka_przyciski, text="Wczytaj CSV", width=22, command=wczytaj_dane).pack(pady=4)
 
 tk.Button(
@@ -384,26 +387,30 @@ tk.Button(
     command=wykres_leki_cukrzyca
 ).pack(pady=4)
 
+# ===== RAMKA FILTRÓW =====
+ramka_filtry = tk.LabelFrame(ramka_przyciski, text="Filtry", padx=5, pady=5)
+ramka_filtry.pack(pady=5, fill="x")
 # ===== FILTRY =====
-tk.Label(ramka_przyciski, text="Płeć").pack()
-tk.Checkbutton(ramka_przyciski, text="K", variable=var_k).pack()
-tk.Checkbutton(ramka_przyciski, text="M", variable=var_m).pack()
+tk.Label(ramka_filtry, text="Płeć").pack()
+tk.Checkbutton(ramka_filtry, text="K", variable=var_k).pack()
+tk.Checkbutton(ramka_filtry, text="M", variable=var_m).pack()
 
-tk.Label(ramka_przyciski, text="Wiek od").pack()
-entry_min = tk.Entry(ramka_przyciski)
+tk.Label(ramka_filtry, text="Wiek od").pack()
+entry_min = tk.Entry(ramka_filtry)
 entry_min.pack()
 
-tk.Label(ramka_przyciski, text="Wiek do").pack()
-entry_max = tk.Entry(ramka_przyciski)
+tk.Label(ramka_filtry, text="Wiek do").pack()
+entry_max = tk.Entry(ramka_filtry)
 entry_max.pack()
 
-tk.Label(ramka_przyciski, text="Cukrzyca").pack()
-tk.Checkbutton(ramka_przyciski, text="tak", variable=var_cuk_tak).pack()
-tk.Checkbutton(ramka_przyciski, text="nie", variable=var_cuk_nie).pack()
+tk.Label(ramka_filtry, text="Cukrzyca").pack()
+tk.Checkbutton(ramka_filtry, text="tak", variable=var_cuk_tak).pack()
+tk.Checkbutton(ramka_filtry, text="nie", variable=var_cuk_nie).pack()
 
-tk.Label(ramka_przyciski, text="Nadciśnienie").pack()
-tk.Checkbutton(ramka_przyciski, text="tak", variable=var_nad_tak).pack()
-tk.Checkbutton(ramka_przyciski, text="nie", variable=var_nad_nie).pack()
+tk.Label(ramka_filtry, text="Nadciśnienie").pack()
+tk.Checkbutton(ramka_filtry, text="tak", variable=var_nad_tak).pack()
+tk.Checkbutton(ramka_filtry, text="nie", variable=var_nad_nie).pack()
+
 
 tk.Button(
     ramka_przyciski,
