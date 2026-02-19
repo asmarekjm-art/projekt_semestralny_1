@@ -289,7 +289,27 @@ def wykres_leki_cukrzyca():
     canvas.draw()
     canvas.get_tk_widget().pack(fill="both", expand=True)
 
+#+=============
+# eksport danych do pliku .csv
 
+def eksport_csv():
+    global df
+
+    if df is None:
+        messagebox.showwarning("Brak danych", "Najpierw wczytaj dane")
+        return
+
+    path = filedialog.asksaveasfilename(
+        defaultextension=".csv",
+        filetypes=[("CSV files", "*.csv")]
+    )
+
+    if not path:
+        return
+
+    df.to_csv(path, index=False)
+
+    messagebox.showinfo("Sukces", "Plik zapisany")
 
 # ======================
 # GUI
@@ -382,5 +402,14 @@ tk.Button(
     fg="white",
     command=filtruj_dane
 ).pack(pady=6)
+
+
+tk.Button(
+    ramka_przyciski,
+    text="Eksport CSV",
+    width=22,
+    command=eksport_csv
+).pack(pady=4)
+
 # ===== START =====
 okno.mainloop()
