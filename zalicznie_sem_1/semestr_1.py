@@ -161,100 +161,7 @@ def wykres_bmi():
     canvas.draw()
     canvas.get_tk_widget().pack(fill="both", expand=True)
 
-#==================
-# leki a cisnienie
-#==================
-def wykres_leki_cisnienie():
-    global df, canvas
 
-    if df is None:
-        messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
-        return
-
-    if "leki_na_cisnienie" not in df.columns or "cisnienie" not in df.columns:
-        messagebox.showwarning("Błąd", "Brak danych o lekach lub ciśnieniu")
-        return
-
-    if canvas:
-        canvas.get_tk_widget().destroy()
-
-    # pobierz skurczowe
-    def skurczowe(val):
-        try:
-            return int(str(val).split("/")[0])
-        except:
-            return None
-
-    df["cis_sk"] = df["cisnienie"].apply(skurczowe)
-
-    z_lekami = df[df["leki_na_cisnienie"] != "brak lekow"]["cis_sk"].dropna()
-    bez_lekow = df[df["leki_na_cisnienie"] == "brak lekow"]["cis_sk"].dropna()
-
-    fig = Figure(figsize=(6, 4))
-    ax = fig.add_subplot(111)
-
-    # punkty pacjentów
-    ax.scatter([1]*len(bez_lekow), bez_lekow, alpha=0.4, color="orange", label="Bez leków")
-    ax.scatter([2]*len(z_lekami), z_lekami, alpha=0.4, color="blue", label="Z lekami")
-
-    # średnie
-    ax.scatter(1, bez_lekow.mean(), color="black", s=80, marker="D")
-    ax.scatter(2, z_lekami.mean(), color="black", s=80, marker="D")
-
-    # linia nadciśnienia
-    ax.axhline(140, linestyle="--", color="red", label="Nadciśnienie ≥140")
-
-    ax.set_xticks([1, 2])
-    ax.set_xticklabels(["Bez leków", "Z lekami"])
-
-    ax.set_ylabel("Ciśnienie skurczowe")
-    ax.set_title("Ciśnienie vs leczenie")
-    ax.grid(alpha=0.3)
-    ax.legend()
-
-    canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
-    canvas.draw()
-    canvas.get_tk_widget().pack(fill="both", expand=True)
-
-# nodcisnienie wykres
-def wykres_nadcisnienie_kolowy():
-    global df, canvas
-
-    if df is None:
-        messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
-        return
-
-    if "nadcisnienie" not in df.columns:
-        messagebox.showwarning("Błąd", "Brak danych o nadciśnieniu")
-        return
-
-    if canvas:
-        canvas.get_tk_widget().destroy()
-
-    counts = df["nadcisnienie"].value_counts()
-
-    labels = ["Nadciśnienie", "Brak nadciśnienia"]
-    values = [
-        counts.get("tak", 0),
-        counts.get("nie", 0)
-    ]
-
-    fig = Figure(figsize=(5, 4))
-    ax = fig.add_subplot(111)
-
-    ax.pie(
-        values,
-        labels=labels,
-        autopct="%1.1f%%",
-        colors=["red", "green"],
-        startangle=90
-    )
-
-    ax.set_title("Procent pacjentów z nadciśnieniem")
-
-    canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
-    canvas.draw()
-    canvas.get_tk_widget().pack(fill="both", expand=True)
 
 #=========
 #wykres cykrzyca podział na typ 1 i 2 oraz brak
@@ -326,13 +233,18 @@ def wykres_leki_cukrzyca():
     fig = Figure(figsize=(6, 4))
     ax = fig.add_subplot(111)
 
-    ax.bar(counts.index, counts.values, color="purple", alpha=0.7)
+    x = range(len(counts))
+
+    ax.bar(x, counts.values, color="purple", alpha=0.7)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(counts.index, rotation=30, ha="right")
 
     ax.set_ylabel("Liczba pacjentów")
     ax.set_title(f"Leczenie cukrzycy (N={len(dane_cukrzyca)})")
     ax.grid(axis="y", alpha=0.3)
 
-    ax.set_xticklabels(counts.index, rotation=30, ha="right")
+
 
     canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
     canvas.draw()
@@ -379,13 +291,6 @@ tk.Button(
     text="Wykres BMI",
     width=22,
     command=wykres_bmi
-).pack(pady=4)
-
-tk.Button(
-    ramka_przyciski,
-    text="Ciśnienie a leki",
-    width=22,
-    command=wykres_leki_cisnienie
 ).pack(pady=4)
 
 tk.Button(
