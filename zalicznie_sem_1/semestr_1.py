@@ -353,9 +353,7 @@ scroll.config(command=pole.yview)
 ramka_przyciski = tk.Frame(okno)
 ramka_przyciski.pack(side="right", fill="y", padx=10, pady=10)
 
-
-
-
+tk.Label(ramka_przyciski, text="Panel sterowania", font=("Arial", 10, "bold")).pack(pady=5)
 
 tk.Button(ramka_przyciski, text="Wczytaj CSV", width=22, command=wczytaj_dane).pack(pady=4)
 
@@ -390,6 +388,7 @@ tk.Button(
 # ===== RAMKA FILTRÓW =====
 ramka_filtry = tk.LabelFrame(ramka_przyciski, text="Filtry", padx=5, pady=5)
 ramka_filtry.pack(pady=5, fill="x")
+
 # ===== FILTRY =====
 tk.Label(ramka_filtry, text="Płeć").pack()
 tk.Checkbutton(ramka_filtry, text="K", variable=var_k).pack()
