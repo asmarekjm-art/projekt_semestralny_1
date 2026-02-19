@@ -41,10 +41,12 @@ def wczytaj_dane():
             df["nadcisnienie"] = df["cisnienie"].apply(nadcisnienie)
 
         pokaz(df)
+        pokaz_statystyki(df)
         messagebox.showinfo("Sukces", "Dane wczytane poprawnie")
 
     except Exception as e:
         messagebox.showerror("Błąd", f"Nie udało się wczytać pliku:\n{e}")
+
 
 
 # ======================
@@ -113,6 +115,7 @@ def filtruj_dane():
     df_filtered = dane
 
     pokaz(dane)
+    pokaz_statystyki(dane)
 
 
 # ======================
@@ -320,6 +323,33 @@ def eksport_csv():
         "Sukces",
         f"Zapisano {len(dane_do_zapisu)} rekordów"
     )
+#======
+#statystyka
+def pokaz_statystyki(dane):
+    global stat_label
+
+    if dane is None or len(dane) == 0:
+        stat_label.config(text="Brak danych")
+        return
+
+    liczba = len(dane)
+
+    sredni_wiek = round(dane["wiek"].mean(), 1) if "wiek" in dane.columns else "-"
+    sredni_bmi = round(dane["BMI"].mean(), 1) if "BMI" in dane.columns else "-"
+
+    if "cukrzyca" in dane.columns:
+        cuk_proc = round((dane["cukrzyca"] == "tak").mean() * 100, 1)
+    else:
+        cuk_proc = "-"
+
+    tekst = (
+        f"Pacjenci: {liczba}   |   "
+        f"Średni wiek: {sredni_wiek}   |   "
+        f"Średni BMI: {sredni_bmi}   |   "
+        f"Cukrzyca: {cuk_proc}%"
+    )
+
+    stat_label.config(text=tekst)
 
 
 # ======================
@@ -328,6 +358,17 @@ def eksport_csv():
 okno = tk.Tk()
 okno.title("Analiza pacjentów")
 
+#===statystyka
+stat_label = tk.Label(
+    okno,
+    text="Statystyki pojawią się po wczytaniu danych",
+    font=("Arial", 10, "bold"),
+    bg="#ecf0f1",
+    anchor="w",
+    padx=10
+)
+
+stat_label.pack(fill="x")
 
 # ===== ZMIENNE =====
 var_k = tk.BooleanVar(value=True)
