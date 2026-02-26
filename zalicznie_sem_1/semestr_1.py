@@ -590,6 +590,16 @@ def statystyka_ttest():
     tekst = "\n-----------------------\n".join(wyniki)
 
     messagebox.showinfo("Test t-Studenta", tekst)
+##
+#zamknij wykres
+def zamknij_wykres():
+    global canvas, current_fig
+
+    if canvas:
+        canvas.get_tk_widget().destroy()
+        canvas = None
+
+    current_fig = None
 
 # ======================
 # GUI
@@ -635,7 +645,17 @@ ramka_przyciski.pack(side="right", fill="y", padx=10, pady=10)
 
 tk.Label(ramka_przyciski, text="Panel sterowania", font=("Arial", 10, "bold")).pack(pady=5)
 
-tk.Button(ramka_przyciski, text="Wczytaj CSV", width=22, command=wczytaj_dane).pack(pady=4)
+#wczytak dane
+tk.Button(
+    ramka_przyciski,
+    text="Wczytaj CSV",
+    width=22,
+    bg="medium purple",
+    fg="white",
+    activebackground="#c62828",
+    activeforeground="white",
+    command=wczytaj_dane
+).pack(pady=4)
 
 
 # ===== MENU WYKRESÓW =====
@@ -643,7 +663,11 @@ menu_button = tk.Menubutton(
     ramka_przyciski,
     text="Wykresy",
     width=22,
-    relief="raised"
+    relief="raised",
+    bg="royal blue",
+    fg="white",
+    activebackground="#1565c0",
+    activeforeground="white"
 )
 
 menu_button.pack(pady=4)
@@ -656,22 +680,38 @@ menu.add_command(label="Nadciśnienie %", command=wykres_nadcisnienie_kolowy)
 menu.add_command(label="Cukrzyca typy %", command=wykres_cukrzyca_typ_kolowy)
 menu.add_command(label="Leki na cukrzycę", command=wykres_leki_cukrzyca)
 
-#pdf
 
+#pdf
 tk.Button(
     ramka_przyciski,
     text="Eksport wykres do PDF",
     width=22,
-    bg="#2196F3",
+    bg="royal blue",
     fg="white",
+    activebackground="#1565c0",
+    activeforeground="white",
     command=eksport_pdf
 ).pack(pady=4)
 
+# zamkniecie wykresu
+tk.Button(
+    ramka_przyciski,
+    text="Zamknij wykres",
+    width=22,
+    bg="royal blue",
+    fg="white",
+    activebackground="#1565c0",
+    activeforeground="white",
+    command=zamknij_wykres
+).pack(pady=4)
+
+
+#statystyka
 tk.Button(
     ramka_przyciski,
     text="Statystyka t-Studenta",
     width=22,
-    bg="#9C27B0",
+    bg="pink",
     fg="white",
     command=statystyka_ttest
 ).pack(pady=4)
