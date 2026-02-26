@@ -3,7 +3,7 @@ from tkinter import filedialog, messagebox
 import pandas as pd
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
-
+from scipy.stats import ttest_ind
 #import
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 from reportlab.lib.styles import getSampleStyleSheet
@@ -338,29 +338,71 @@ def wykres_leki_cukrzyca():
 
 #+=============
 # eksport danych do pliku .csv
-def eksport_csv():
-    global df, df_filtered
+def eksport_pdf():
+    global current_fig, current_data, current_title
 
-    if df is None:
-        messagebox.showwarning("Brak danych", "Najpierw wczytaj dane")
+    if current_fig is None:
+        messagebox.showwarning("Brak wykresu", "Najpierw wygeneruj wykres")
         return
 
-    dane_do_zapisu = df_filtered if df_filtered is not None else df
-
     path = filedialog.asksaveasfilename(
-        defaultextension=".csv",
-        filetypes=[("CSV files", "*.csv")]
+        defaultextension=".pdf",
+        filetypes=[("PDF files", "*.pdf")]
     )
 
     if not path:
         return
 
-    dane_do_zapisu.to_csv(path, index=False)
+    from io import BytesIO
 
-    messagebox.showinfo(
-        "Sukces",
-        f"Zapisano {len(dane_do_zapisu)} rekordów"
-    )
+    img_buffer = BytesIO()
+    current_fig.savefig(img_buffer, format="png", dpi=300, bbox_inches="tight")
+    img_buffer.seek(0)
+
+    pdfmetrics.registerFont(UnicodeCIDFont("HYSMyeongJo-Medium"))
+
+    doc = SimpleDocTemplate(path, pagesize=A4)
+    styles = getSampleStyleSheet()
+
+    for style in styles.byName.values():
+        style.fontName = "HYSMyeongJo-Medium"
+
+    elements = []
+
+    elements.append(Paragraph(current_title, styles["Heading1"]))
+    elements.append(Spacer(1, 12))
+
+    img = Image(img_buffer)
+    img.drawHeight = 300
+    img.drawWidth = 450
+
+    elements.append(img)
+    elements.append(Spacer(1, 12))
+
+    if current_data is not None and len(current_data) > 0:
+
+        data_table = [list(current_data.columns)]
+
+        for _, row in current_data.head(20).iterrows():
+            data_table.append([str(x) for x in row])
+
+        table = Table(data_table, repeatRows=1)
+
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+            ("FONTNAME", (0, 0), (-1, -1), "HYSMyeongJo-Medium"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ]))
+
+        elements.append(Paragraph("Dane (pierwsze 20 rekordów)", styles["Heading2"]))
+        elements.append(table)
+
+    doc.build(elements)
+
+    messagebox.showinfo("Sukces", f"Zapisano PDF:\n{path}")
+
+
 #======
 #statystyka
 def pokaz_statystyki(dane):
@@ -448,6 +490,33 @@ def eksport_pdf():
     doc.build(elements)
 
     messagebox.showinfo("Sukces", "Zapisano PDF")
+
+#eksport danych do csv
+
+def eksport_csv():
+    global df, df_filtered
+
+    if df is None:
+        messagebox.showwarning("Brak danych", "Najpierw wczytaj dane")
+        return
+
+    dane_do_zapisu = df_filtered if df_filtered is not None else df
+
+    path = filedialog.asksaveasfilename(
+        defaultextension=".csv",
+        filetypes=[("CSV files", "*.csv")]
+    )
+
+    if not path:
+        return
+
+    dane_do_zapisu.to_csv(path, index=False)
+
+    messagebox.showinfo(
+        "Sukces",
+        f"Zapisano {len(dane_do_zapisu)} rekordów"
+    )
+
 
 # ======================
 # GUI
