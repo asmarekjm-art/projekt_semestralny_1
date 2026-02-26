@@ -34,7 +34,6 @@ def wczytaj_dane():
 
     try:
         df = pd.read_csv(path)
-
         # ===== oblicz BMI jeśli są dane =====
         if "waga" in df.columns and "wzrost" in df.columns:
             df["BMI"] = df["waga"] / (df["wzrost"] / 100) ** 2
@@ -182,9 +181,7 @@ def wykres_bmi():
     current_data = dane
     current_title = "Rozkład BMI według płci"
 
-    canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
-    canvas.draw()
-    canvas.get_tk_widget().pack(fill="both", expand=True)
+
 #=====
 #nadcisnienie
 def wykres_nadcisnienie_kolowy():
@@ -194,7 +191,7 @@ def wykres_nadcisnienie_kolowy():
         messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
         return
 
-    if "nadcisnienie" not in df.columns:
+    if "nadcisnienie" not in dane.columns:
         messagebox.showwarning("Błąd", "Brak danych o nadciśnieniu")
         return
 
@@ -227,10 +224,6 @@ def wykres_nadcisnienie_kolowy():
     current_fig = fig
     current_data = dane
     current_title = "Procent pacjentów z nadciśnieniem"
-
-    canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
-    canvas.draw()
-    canvas.get_tk_widget().pack(fill="both", expand=True)
 
 
 #=========
@@ -277,10 +270,6 @@ def wykres_cukrzyca_typ_kolowy():
     current_data = dane
     current_title = "Cukrzyca w populacji"
 
-    canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
-    canvas.draw()
-
-    canvas.get_tk_widget().pack(fill="both", expand=True)
 
 #======
 # wykres słupkowy lekow na cukrzyce
@@ -332,13 +321,39 @@ def wykres_leki_cukrzyca():
     current_data = dane_cukrzyca
     current_title = "Leczenie cukrzycy"
 
-    canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
-    canvas.draw()
-    canvas.get_tk_widget().pack(fill="both", expand=True)
 
-#+=============
-# eksport danych do pliku .csv
+
+#======
+#statystyka
+def pokaz_statystyki(dane):
+    global stat_label
+
+    if dane is None or len(dane) == 0:
+        stat_label.config(text="Brak danych")
+        return
+
+    liczba = len(dane)
+
+    sredni_wiek = round(dane["wiek"].mean(), 1) if "wiek" in dane.columns else "-"
+    sredni_bmi = round(dane["BMI"].mean(), 1) if "BMI" in dane.columns else "-"
+
+    if "cukrzyca" in dane.columns:
+        cuk_proc = round((dane["cukrzyca"] == "tak").mean() * 100, 1)
+    else:
+        cuk_proc = "-"
+
+    tekst = (
+        f"Pacjenci: {liczba}   |   "
+        f"Średni wiek: {sredni_wiek}   |   "
+        f"Średni BMI: {sredni_bmi}   |   "
+        f"Cukrzyca: {cuk_proc}%"
+    )
+
+    stat_label.config(text=tekst)
+
+#PDF
 def eksport_pdf():
+
     global current_fig, current_data, current_title
 
     if current_fig is None:
@@ -401,95 +416,6 @@ def eksport_pdf():
     doc.build(elements)
 
     messagebox.showinfo("Sukces", f"Zapisano PDF:\n{path}")
-
-
-#======
-#statystyka
-def pokaz_statystyki(dane):
-    global stat_label
-
-    if dane is None or len(dane) == 0:
-        stat_label.config(text="Brak danych")
-        return
-
-    liczba = len(dane)
-
-    sredni_wiek = round(dane["wiek"].mean(), 1) if "wiek" in dane.columns else "-"
-    sredni_bmi = round(dane["BMI"].mean(), 1) if "BMI" in dane.columns else "-"
-
-    if "cukrzyca" in dane.columns:
-        cuk_proc = round((dane["cukrzyca"] == "tak").mean() * 100, 1)
-    else:
-        cuk_proc = "-"
-
-    tekst = (
-        f"Pacjenci: {liczba}   |   "
-        f"Średni wiek: {sredni_wiek}   |   "
-        f"Średni BMI: {sredni_bmi}   |   "
-        f"Cukrzyca: {cuk_proc}%"
-    )
-
-    stat_label.config(text=tekst)
-
-#PDF
-def eksport_pdf():
-    global current_fig, current_data, current_title
-
-    if current_fig is None:
-        messagebox.showwarning("Brak wykresu", "Najpierw wygeneruj wykres")
-        return
-
-    path = filedialog.asksaveasfilename(
-        defaultextension=".pdf",
-        filetypes=[("PDF files", "*.pdf")]
-    )
-
-    if not path:
-        return
-
-    # zapis wykresu jako obraz
-    img_path = "temp_plot.png"
-    current_fig.savefig(img_path, dpi=300, bbox_inches="tight")
-
-    pdfmetrics.registerFont(UnicodeCIDFont("HYSMyeongJo-Medium"))
-
-    doc = SimpleDocTemplate(path, pagesize=A4)
-    styles = getSampleStyleSheet()
-
-    elements = []
-
-    style = styles["Heading1"]
-    style.fontName = "HYSMyeongJo-Medium"
-
-    elements.append(Paragraph(current_title, style))
-    elements.append(Spacer(1, 12))
-
-    # obraz wykresu
-    elements.append(Image(img_path, width=450, height=300))
-    elements.append(Spacer(1, 12))
-
-    # dane tabelaryczne
-    if current_data is not None:
-        data_table = [list(current_data.columns)]
-
-        for _, row in current_data.head(20).iterrows():
-            data_table.append(list(row))
-
-        table = Table(data_table)
-
-        table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
-            ("FONTNAME", (0, 0), (-1, -1), "HYSMyeongJo-Medium"),
-            ("FONTSIZE", (0, 0), (-1, -1), 8),
-        ]))
-
-        elements.append(Paragraph("Dane (pierwsze 20 rekordów)", styles["Heading2"]))
-        elements.append(table)
-
-    doc.build(elements)
-
-    messagebox.showinfo("Sukces", "Zapisano PDF")
 
 #eksport danych do csv
 
@@ -590,7 +516,7 @@ def statystyka_ttest():
     tekst = "\n-----------------------\n".join(wyniki)
 
     messagebox.showinfo("Test t-Studenta", tekst)
-##
+
 #zamknij wykres
 def zamknij_wykres():
     global canvas, current_fig
@@ -601,6 +527,95 @@ def zamknij_wykres():
 
     current_fig = None
 
+
+#okno z wykresami
+from tkinter import ttk
+
+def okno_wykresy():
+
+    global canvas
+
+    if df is None:
+        messagebox.showwarning("Brak danych", "Najpierw wczytaj dane")
+        return
+
+    win = tk.Toplevel(okno)
+    win.title("Wykresy")
+    win.geometry("900x600")
+
+    # ===== GÓRA =====
+    top = tk.Frame(win)
+    top.pack(fill="x", pady=5)
+
+    tk.Label(top, text="Wybierz wykres:").pack(side="left", padx=5)
+
+    wybor = ttk.Combobox(
+        top,
+        values=[
+            "BMI",
+            "Nadciśnienie %",
+            "Cukrzyca typy %",
+            "Leki na cukrzycę"
+        ],
+        state="readonly",
+        width=25
+    )
+    wybor.pack(side="left", padx=5)
+    wybor.current(0)
+
+    tk.Button(top, text="Pokaż", command=lambda: rysuj()).pack(side="left", padx=5)
+
+    # ===== ŚRODEK =====
+    plot_frame = tk.Frame(win)
+    plot_frame.pack(fill="both", expand=True)
+
+    # ===== DÓŁ =====
+    bottom = tk.Frame(win)
+    bottom.pack(fill="x", pady=10)
+
+    def rysuj():
+
+        global canvas
+
+        if canvas:
+            canvas.get_tk_widget().destroy()
+
+        typ = wybor.get()
+
+        if typ == "BMI":
+            wykres_bmi()
+        elif typ == "Nadciśnienie %":
+            wykres_nadcisnienie_kolowy()
+        elif typ == "Cukrzyca typy %":
+            wykres_cukrzyca_typ_kolowy()
+        elif typ == "Leki na cukrzycę":
+            wykres_leki_cukrzyca()
+        else:
+            return
+
+        canvas = FigureCanvasTkAgg(current_fig, master=plot_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
+
+    tk.Button(
+        bottom,
+        text="Eksport PDF",
+        bg="#3949ab",
+        fg="white",
+        width=15,
+        command=eksport_pdf
+    ).pack(side="right", padx=10)
+
+    tk.Button(
+        bottom,
+        text="Zamknij",
+        bg="#e53935",
+        fg="white",
+        width=15,
+        command=win.destroy
+    ).pack(side="right", padx=10)
+
+    rysuj()
 # ======================
 # GUI
 # ======================
@@ -659,50 +674,13 @@ tk.Button(
 
 
 # ===== MENU WYKRESÓW =====
-menu_button = tk.Menubutton(
+tk.Button(
     ramka_przyciski,
     text="Wykresy",
     width=22,
-    relief="raised",
     bg="royal blue",
     fg="white",
-    activebackground="#1565c0",
-    activeforeground="white"
-)
-
-menu_button.pack(pady=4)
-
-menu = tk.Menu(menu_button, tearoff=0)
-menu_button.config(menu=menu)
-
-menu.add_command(label="Wykres BMI", command=wykres_bmi)
-menu.add_command(label="Nadciśnienie %", command=wykres_nadcisnienie_kolowy)
-menu.add_command(label="Cukrzyca typy %", command=wykres_cukrzyca_typ_kolowy)
-menu.add_command(label="Leki na cukrzycę", command=wykres_leki_cukrzyca)
-
-
-#pdf
-tk.Button(
-    ramka_przyciski,
-    text="Eksport wykres do PDF",
-    width=22,
-    bg="royal blue",
-    fg="white",
-    activebackground="#1565c0",
-    activeforeground="white",
-    command=eksport_pdf
-).pack(pady=4)
-
-# zamkniecie wykresu
-tk.Button(
-    ramka_przyciski,
-    text="Zamknij wykres",
-    width=22,
-    bg="royal blue",
-    fg="white",
-    activebackground="#1565c0",
-    activeforeground="white",
-    command=zamknij_wykres
+    command=okno_wykresy
 ).pack(pady=4)
 
 
