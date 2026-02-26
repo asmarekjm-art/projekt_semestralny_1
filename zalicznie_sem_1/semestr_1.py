@@ -517,6 +517,79 @@ def eksport_csv():
         f"Zapisano {len(dane_do_zapisu)} rekordów"
     )
 
+#Statystyka Tstudenta
+def statystyka_ttest():
+    global df, df_filtered
+
+    dane = df_filtered if df_filtered is not None else df
+
+    if dane is None or len(dane) == 0:
+        messagebox.showwarning("Brak danych", "Najpierw wczytaj dane")
+        return
+
+    wyniki = []
+
+    try:
+
+        # ===== BMI K vs M =====
+        if "BMI" in dane.columns and "plec" in dane.columns:
+
+            k = dane[dane["plec"] == "K"]["BMI"].dropna()
+            m = dane[dane["plec"] == "M"]["BMI"].dropna()
+
+            if len(k) > 1 and len(m) > 1:
+                t, p = ttest_ind(k, m, equal_var=False)
+
+                wyniki.append(
+                    f"BMI Kobiety vs Mężczyźni\n"
+                    f"K: {k.mean():.2f} ± {k.std():.2f} (n={len(k)})\n"
+                    f"M: {m.mean():.2f} ± {m.std():.2f} (n={len(m)})\n"
+                    f"p = {p:.4f}\n"
+                )
+
+        # ===== BMI cukrzyca =====
+        if "BMI" in dane.columns and "cukrzyca" in dane.columns:
+
+            tak = dane[dane["cukrzyca"] == "tak"]["BMI"].dropna()
+            nie = dane[dane["cukrzyca"] == "nie"]["BMI"].dropna()
+
+            if len(tak) > 1 and len(nie) > 1:
+                t, p = ttest_ind(tak, nie, equal_var=False)
+
+                wyniki.append(
+                    f"BMI Cukrzyca vs Brak\n"
+                    f"Cukrzyca: {tak.mean():.2f} ± {tak.std():.2f} (n={len(tak)})\n"
+                    f"Brak: {nie.mean():.2f} ± {nie.std():.2f} (n={len(nie)})\n"
+                    f"p = {p:.4f}\n"
+                )
+
+        # ===== BMI nadciśnienie =====
+        if "BMI" in dane.columns and "nadcisnienie" in dane.columns:
+
+            tak = dane[dane["nadcisnienie"] == "tak"]["BMI"].dropna()
+            nie = dane[dane["nadcisnienie"] == "nie"]["BMI"].dropna()
+
+            if len(tak) > 1 and len(nie) > 1:
+                t, p = ttest_ind(tak, nie, equal_var=False)
+
+                wyniki.append(
+                    f"BMI Nadciśnienie vs Brak\n"
+                    f"Nadciśnienie: {tak.mean():.2f} ± {tak.std():.2f} (n={len(tak)})\n"
+                    f"Brak: {nie.mean():.2f} ± {nie.std():.2f} (n={len(nie)})\n"
+                    f"p = {p:.4f}\n"
+                )
+
+    except Exception as e:
+        messagebox.showerror("Błąd", str(e))
+        return
+
+    if not wyniki:
+        messagebox.showinfo("Wyniki", "Brak danych do testów")
+        return
+
+    tekst = "\n-----------------------\n".join(wyniki)
+
+    messagebox.showinfo("Test t-Studenta", tekst)
 
 # ======================
 # GUI
@@ -594,6 +667,14 @@ tk.Button(
     command=eksport_pdf
 ).pack(pady=4)
 
+tk.Button(
+    ramka_przyciski,
+    text="Statystyka t-Studenta",
+    width=22,
+    bg="#9C27B0",
+    fg="white",
+    command=statystyka_ttest
+).pack(pady=4)
 
 # ===== RAMKA FILTRÓW =====
 ramka_filtry = tk.LabelFrame(ramka_przyciski, text="Filtry", padx=5, pady=5)
