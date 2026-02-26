@@ -221,7 +221,7 @@ def wykres_cukrzyca_typ_kolowy():
         messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
         return
 
-    if "cukrzyca" not in df.columns:
+    if "cukrzyca" not in df.columns or "typ_cukrzycy" not in df.columns:
         messagebox.showwarning("Błąd", "Brak danych o cukrzycy")
         return
 
@@ -275,7 +275,11 @@ def wykres_leki_cukrzyca():
     dane_cukrzyca = df[df["cukrzyca"] == "tak"].copy()
 
     # brak leków jeśli puste
-    dane_cukrzyca["leki_na_cukrzyce"] = dane_cukrzyca["leki_na_cukrzyce"].replace("", "brak leków")
+    dane_cukrzyca["leki_na_cukrzyce"] = (
+        dane_cukrzyca["leki_na_cukrzyce"]
+        .fillna("brak leków")
+        .replace("", "brak leków")
+    )
 
     counts = dane_cukrzyca["leki_na_cukrzyce"].value_counts()
 
@@ -398,33 +402,23 @@ tk.Label(ramka_przyciski, text="Panel sterowania", font=("Arial", 10, "bold")).p
 
 tk.Button(ramka_przyciski, text="Wczytaj CSV", width=22, command=wczytaj_dane).pack(pady=4)
 
-tk.Button(
+# ===== MENU WYKRESÓW =====
+menu_button = tk.Menubutton(
     ramka_przyciski,
-    text="Wykres BMI",
+    text="Wykresy",
     width=22,
-    command=wykres_bmi
-).pack(pady=4)
+    relief="raised"
+)
 
-tk.Button(
-    ramka_przyciski,
-    text="Nadciśnienie %",
-    width=22,
-    command=wykres_nadcisnienie_kolowy
-).pack(pady=4)
+menu_button.pack(pady=4)
 
-tk.Button(
-    ramka_przyciski,
-    text="Cukrzyca typy %",
-    width=22,
-    command=wykres_cukrzyca_typ_kolowy
-).pack(pady=4)
+menu = tk.Menu(menu_button, tearoff=0)
+menu_button.config(menu=menu)
 
-tk.Button(
-    ramka_przyciski,
-    text="Leki na cukrzycę",
-    width=22,
-    command=wykres_leki_cukrzyca
-).pack(pady=4)
+menu.add_command(label="Wykres BMI", command=wykres_bmi)
+menu.add_command(label="Nadciśnienie %", command=wykres_nadcisnienie_kolowy)
+menu.add_command(label="Cukrzyca typy %", command=wykres_cukrzyca_typ_kolowy)
+menu.add_command(label="Leki na cukrzycę", command=wykres_leki_cukrzyca)
 
 # ===== RAMKA FILTRÓW =====
 ramka_filtry = tk.LabelFrame(ramka_przyciski, text="Filtry", padx=5, pady=5)
