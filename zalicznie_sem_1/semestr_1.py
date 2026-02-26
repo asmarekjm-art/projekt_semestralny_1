@@ -4,12 +4,22 @@ import pandas as pd
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
+#import
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+
 df = None
 canvas = None
 
 df_filtered = None
 
-
+current_fig = None
+current_data = None
+current_title = ""
 
 # ======================
 # WCZYTYWANIE CSV
@@ -123,20 +133,20 @@ def filtruj_dane():
 # ======================
 def wykres_bmi():
     global df, canvas
-
+    dane = df_filtered if df_filtered is not None else df
     if df is None:
         messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
         return
 
-    if "BMI" not in df.columns or "plec" not in df.columns:
+    if "BMI" not in dane.columns or "plec" not in dane.columns:
         messagebox.showwarning("Błąd", "Brak kolumn BMI lub plec")
         return
 
     if canvas:
         canvas.get_tk_widget().destroy()
 
-    kobiety = df[df["plec"] == "K"]["BMI"]
-    mezczyzni = df[df["plec"] == "M"]["BMI"]
+    kobiety = dane[dane["plec"] == "K"]["BMI"]
+    mezczyzni = dane[dane["plec"] == "M"]["BMI"]
 
     fig = Figure(figsize=(8, 4))
 
@@ -166,6 +176,12 @@ def wykres_bmi():
 
     fig.suptitle("Rozkład BMI według płci")
 
+    global current_fig, current_data, current_title
+
+    current_fig = fig
+    current_data = dane
+    current_title = "Rozkład BMI według płci"
+
     canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
     canvas.draw()
     canvas.get_tk_widget().pack(fill="both", expand=True)
@@ -173,8 +189,8 @@ def wykres_bmi():
 #nadcisnienie
 def wykres_nadcisnienie_kolowy():
     global df, canvas
-
-    if df is None:
+    dane = df_filtered if df_filtered is not None else df
+    if dane is None:
         messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
         return
 
@@ -185,7 +201,7 @@ def wykres_nadcisnienie_kolowy():
     if canvas:
         canvas.get_tk_widget().destroy()
 
-    counts = df["nadcisnienie"].value_counts()
+    counts = dane["nadcisnienie"].value_counts()
 
     labels = ["Nadciśnienie", "Brak nadciśnienia"]
     values = [
@@ -204,7 +220,13 @@ def wykres_nadcisnienie_kolowy():
         startangle=90
     )
 
-    ax.set_title(f"Procent pacjentów z nadciśnieniem (N={len(df)})")
+    ax.set_title(f"Procent pacjentów z nadciśnieniem (N={len(dane)})")
+
+    global current_fig, current_data, current_title
+
+    current_fig = fig
+    current_data = dane
+    current_title = "Procent pacjentów z nadciśnieniem"
 
     canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
     canvas.draw()
@@ -216,7 +238,7 @@ def wykres_nadcisnienie_kolowy():
 
 def wykres_cukrzyca_typ_kolowy():
     global df, canvas
-
+    dane = df_filtered if df_filtered is not None else df
     if df is None:
         messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
         return
@@ -229,9 +251,9 @@ def wykres_cukrzyca_typ_kolowy():
         canvas.get_tk_widget().destroy()
 
     # liczby
-    brak = len(df[df["cukrzyca"] == "nie"])
-    typ1 = len(df[df["typ_cukrzycy"] == "typ 1"])
-    typ2 = len(df[df["typ_cukrzycy"] == "typ 2"])
+    brak = len(dane[dane["cukrzyca"] == "nie"])
+    typ1 = len(dane[dane["typ_cukrzycy"] == "typ 1"])
+    typ2 = len(dane[dane["typ_cukrzycy"] == "typ 2"])
 
     labels = ["Brak cukrzycy", "Typ 1", "Typ 2"]
     values = [brak, typ1, typ2]
@@ -247,7 +269,13 @@ def wykres_cukrzyca_typ_kolowy():
         startangle=90
     )
 
-    ax.set_title(f"Cukrzyca w populacji (N={len(df)})")
+    ax.set_title(f"Cukrzyca w populacji (N={len(dane)})")
+
+    global current_fig, current_data, current_title
+
+    current_fig = fig
+    current_data = dane
+    current_title = "Cukrzyca w populacji"
 
     canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
     canvas.draw()
@@ -259,7 +287,7 @@ def wykres_cukrzyca_typ_kolowy():
 
 def wykres_leki_cukrzyca():
     global df, canvas
-
+    dane = df_filtered if df_filtered is not None else df
     if df is None:
         messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
         return
@@ -272,7 +300,7 @@ def wykres_leki_cukrzyca():
         canvas.get_tk_widget().destroy()
 
     # tylko osoby z cukrzycą
-    dane_cukrzyca = df[df["cukrzyca"] == "tak"].copy()
+    dane_cukrzyca = dane[dane["cukrzyca"] == "tak"].copy()
 
     # brak leków jeśli puste
     dane_cukrzyca["leki_na_cukrzyce"] = (
@@ -297,6 +325,12 @@ def wykres_leki_cukrzyca():
     ax.set_title(f"Leczenie cukrzycy (N={len(dane_cukrzyca)})")
     ax.grid(axis="y", alpha=0.3)
     fig.tight_layout()
+
+    global current_fig, current_data, current_title
+
+    current_fig = fig
+    current_data = dane_cukrzyca
+    current_title = "Leczenie cukrzycy"
 
     canvas = FigureCanvasTkAgg(fig, master=ramka_tabela)
     canvas.draw()
@@ -355,6 +389,65 @@ def pokaz_statystyki(dane):
 
     stat_label.config(text=tekst)
 
+#PDF
+def eksport_pdf():
+    global current_fig, current_data, current_title
+
+    if current_fig is None:
+        messagebox.showwarning("Brak wykresu", "Najpierw wygeneruj wykres")
+        return
+
+    path = filedialog.asksaveasfilename(
+        defaultextension=".pdf",
+        filetypes=[("PDF files", "*.pdf")]
+    )
+
+    if not path:
+        return
+
+    # zapis wykresu jako obraz
+    img_path = "temp_plot.png"
+    current_fig.savefig(img_path, dpi=300, bbox_inches="tight")
+
+    pdfmetrics.registerFont(UnicodeCIDFont("HYSMyeongJo-Medium"))
+
+    doc = SimpleDocTemplate(path, pagesize=A4)
+    styles = getSampleStyleSheet()
+
+    elements = []
+
+    style = styles["Heading1"]
+    style.fontName = "HYSMyeongJo-Medium"
+
+    elements.append(Paragraph(current_title, style))
+    elements.append(Spacer(1, 12))
+
+    # obraz wykresu
+    elements.append(Image(img_path, width=450, height=300))
+    elements.append(Spacer(1, 12))
+
+    # dane tabelaryczne
+    if current_data is not None:
+        data_table = [list(current_data.columns)]
+
+        for _, row in current_data.head(20).iterrows():
+            data_table.append(list(row))
+
+        table = Table(data_table)
+
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+            ("FONTNAME", (0, 0), (-1, -1), "HYSMyeongJo-Medium"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ]))
+
+        elements.append(Paragraph("Dane (pierwsze 20 rekordów)", styles["Heading2"]))
+        elements.append(table)
+
+    doc.build(elements)
+
+    messagebox.showinfo("Sukces", "Zapisano PDF")
 
 # ======================
 # GUI
@@ -402,6 +495,7 @@ tk.Label(ramka_przyciski, text="Panel sterowania", font=("Arial", 10, "bold")).p
 
 tk.Button(ramka_przyciski, text="Wczytaj CSV", width=22, command=wczytaj_dane).pack(pady=4)
 
+
 # ===== MENU WYKRESÓW =====
 menu_button = tk.Menubutton(
     ramka_przyciski,
@@ -419,6 +513,18 @@ menu.add_command(label="Wykres BMI", command=wykres_bmi)
 menu.add_command(label="Nadciśnienie %", command=wykres_nadcisnienie_kolowy)
 menu.add_command(label="Cukrzyca typy %", command=wykres_cukrzyca_typ_kolowy)
 menu.add_command(label="Leki na cukrzycę", command=wykres_leki_cukrzyca)
+
+#pdf
+
+tk.Button(
+    ramka_przyciski,
+    text="Eksport wykres do PDF",
+    width=22,
+    bg="#2196F3",
+    fg="white",
+    command=eksport_pdf
+).pack(pady=4)
+
 
 # ===== RAMKA FILTRÓW =====
 ramka_filtry = tk.LabelFrame(ramka_przyciski, text="Filtry", padx=5, pady=5)
