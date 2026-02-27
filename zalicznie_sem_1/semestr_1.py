@@ -326,10 +326,14 @@ def wykres_leki_cukrzyca():
 #======
 #statystyka
 def pokaz_statystyki(dane):
+
     global stat_label
 
     if dane is None or len(dane) == 0:
-        stat_label.config(text="Brak danych")
+        stat_label.config(
+            text="Brak danych",
+            bg="#f8d7da"
+        )
         return
 
     liczba = len(dane)
@@ -349,7 +353,10 @@ def pokaz_statystyki(dane):
         f"Cukrzyca: {cuk_proc}%"
     )
 
-    stat_label.config(text=tekst)
+    stat_label.config(
+        text=tekst,
+        bg="#d4edda"
+    )
 
 #PDF
 def eksport_pdf():
@@ -625,9 +632,9 @@ okno.title("Analiza pacjentów")
 #===statystyka
 stat_label = tk.Label(
     okno,
-    text="Statystyki pojawią się po wczytaniu danych",
+    text="Brak danych",
     font=("Arial", 10, "bold"),
-    bg="#ecf0f1",
+    bg="#f8d7da",
     anchor="w",
     padx=10
 )
@@ -665,7 +672,7 @@ tk.Button(
     ramka_przyciski,
     text="Wczytaj CSV",
     width=22,
-    bg="medium purple",
+    bg="royal blue",
     fg="white",
     activebackground="#c62828",
     activeforeground="white",
