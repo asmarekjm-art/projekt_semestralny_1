@@ -4,6 +4,7 @@ import pandas as pd
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from scipy.stats import ttest_ind
+
 #import
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 from reportlab.lib.styles import getSampleStyleSheet
@@ -11,7 +12,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.cidfonts import UnicodeCIDFont
-
+from reportlab.pdfbase.ttfonts import TTFont
 df = None
 canvas = None
 
@@ -99,6 +100,7 @@ def filtruj_dane():
     except ValueError:
         messagebox.showwarning("Błąd", "Wiek musi być liczbą")
         return
+
 
     # ===== CUKRZYCA =====
     cuk = []
@@ -381,13 +383,13 @@ def eksport_pdf():
     current_fig.savefig(img_buffer, format="png", dpi=300, bbox_inches="tight")
     img_buffer.seek(0)
 
-    pdfmetrics.registerFont(UnicodeCIDFont("HYSMyeongJo-Medium"))
+    pdfmetrics.registerFont(TTFont("Arial", "arial.ttf"))
 
     doc = SimpleDocTemplate(path, pagesize=A4)
     styles = getSampleStyleSheet()
 
     for style in styles.byName.values():
-        style.fontName = "HYSMyeongJo-Medium"
+        style.fontName = "Arial"
 
     elements = []
 
@@ -413,7 +415,7 @@ def eksport_pdf():
         table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
             ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
-            ("FONTNAME", (0, 0), (-1, -1), "HYSMyeongJo-Medium"),
+            ("FONTNAME", (0, 0), (-1, -1), "Arial"),
             ("FONTSIZE", (0, 0), (-1, -1), 8),
         ]))
 
@@ -623,6 +625,28 @@ def okno_wykresy():
     ).pack(side="right", padx=10)
 
     rysuj()
+
+def reset_filtry():
+
+    global df_filtered
+
+    var_k.set(True)
+    var_m.set(True)
+
+    var_cuk_tak.set(True)
+    var_cuk_nie.set(True)
+
+    var_nad_tak.set(True)
+    var_nad_nie.set(True)
+
+    entry_min.delete(0, tk.END)
+    entry_max.delete(0, tk.END)
+
+    df_filtered = None
+
+    if df is not None:
+        pokaz(df)
+        pokaz_statystyki(df)
 # ======================
 # GUI
 # ======================
@@ -702,40 +726,87 @@ tk.Button(
 ).pack(pady=4)
 
 # ===== RAMKA FILTRÓW =====
-ramka_filtry = tk.LabelFrame(ramka_przyciski, text="Filtry", padx=5, pady=5)
-ramka_filtry.pack(pady=5, fill="x")
-
-# ===== FILTRY =====
-tk.Label(ramka_filtry, text="Płeć").pack()
-tk.Checkbutton(ramka_filtry, text="K", variable=var_k).pack()
-tk.Checkbutton(ramka_filtry, text="M", variable=var_m).pack()
-
-tk.Label(ramka_filtry, text="Wiek od").pack()
-entry_min = tk.Entry(ramka_filtry)
-entry_min.pack()
-
-tk.Label(ramka_filtry, text="Wiek do").pack()
-entry_max = tk.Entry(ramka_filtry)
-entry_max.pack()
-
-tk.Label(ramka_filtry, text="Cukrzyca").pack()
-tk.Checkbutton(ramka_filtry, text="tak", variable=var_cuk_tak).pack()
-tk.Checkbutton(ramka_filtry, text="nie", variable=var_cuk_nie).pack()
-
-tk.Label(ramka_filtry, text="Nadciśnienie").pack()
-tk.Checkbutton(ramka_filtry, text="tak", variable=var_nad_tak).pack()
-tk.Checkbutton(ramka_filtry, text="nie", variable=var_nad_nie).pack()
-
-
-tk.Button(
+ramka_filtry = tk.LabelFrame(
     ramka_przyciski,
-    text="Filtruj dane",
-    width=22,
-    bg="#4CAF50",
-    fg="white",
-    command=filtruj_dane
-).pack(pady=6)
+    text="Filtry pacjentów",
+    padx=10,
+    pady=10,
+    bg="#f5f6fa",
+    font=("Arial", 9, "bold")
+)
+ramka_filtry.pack(pady=8, fill="x")
 
+
+# ===== PŁEĆ =====
+sekcja_plec = tk.LabelFrame(ramka_filtry, text="Płeć", bg="#f5f6fa")
+sekcja_plec.pack(fill="x", pady=5)
+
+tk.Checkbutton(sekcja_plec, text="Kobiety", variable=var_k, bg="#f5f6fa").pack(anchor="w")
+tk.Checkbutton(sekcja_plec, text="Mężczyźni", variable=var_m, bg="#f5f6fa").pack(anchor="w")
+
+
+# ===== WIEK =====
+sekcja_wiek = tk.LabelFrame(ramka_filtry, text="Wiek", bg="#f5f6fa")
+sekcja_wiek.pack(fill="x", pady=5)
+
+wiek_frame = tk.Frame(sekcja_wiek, bg="#f5f6fa")
+wiek_frame.pack(fill="x")
+
+tk.Label(wiek_frame, text="Od:", bg="#f5f6fa").grid(row=0, column=0, sticky="w")
+entry_min = tk.Entry(wiek_frame, width=8)
+entry_min.grid(row=0, column=1, padx=5)
+
+tk.Label(wiek_frame, text="Do:", bg="#f5f6fa").grid(row=0, column=2, sticky="w")
+entry_max = tk.Entry(wiek_frame, width=8)
+entry_max.grid(row=0, column=3, padx=5)
+
+
+# ===== CUKRZYCA =====
+sekcja_cuk = tk.LabelFrame(ramka_filtry, text="Cukrzyca", bg="#f5f6fa")
+sekcja_cuk.pack(fill="x", pady=5)
+
+tk.Checkbutton(sekcja_cuk, text="Tak", variable=var_cuk_tak, bg="#f5f6fa").pack(anchor="w")
+tk.Checkbutton(sekcja_cuk, text="Nie", variable=var_cuk_nie, bg="#f5f6fa").pack(anchor="w")
+
+
+# ===== NADCIŚNIENIE =====
+sekcja_nad = tk.LabelFrame(ramka_filtry, text="Nadciśnienie", bg="#f5f6fa")
+sekcja_nad.pack(fill="x", pady=5)
+
+tk.Checkbutton(sekcja_nad, text="Tak", variable=var_nad_tak, bg="#f5f6fa").pack(anchor="w")
+tk.Checkbutton(sekcja_nad, text="Nie", variable=var_nad_nie, bg="#f5f6fa").pack(anchor="w")
+
+frame_btn = tk.Frame(ramka_filtry, bg="#f5f6fa")
+frame_btn.pack(fill="x", pady=5)
+
+frame_btn = tk.Frame(ramka_filtry, bg="#f5f6fa")
+frame_btn.pack(fill="x", pady=8)
+
+btn_filtruj = tk.Button(
+    frame_btn,
+    text="Filtruj",
+    bg="#43a047",
+    fg="white",
+    activebackground="#2e7d32",
+    activeforeground="white",
+    relief="flat",
+    height=1,
+    command=filtruj_dane
+)
+btn_filtruj.pack(side="left", expand=True, fill="x", padx=3)
+
+btn_reset = tk.Button(
+    frame_btn,
+    text="Reset",
+    bg="#757575",
+    fg="white",
+    activebackground="#424242",
+    activeforeground="white",
+    relief="flat",
+    height=1,
+    command=reset_filtry
+)
+btn_reset.pack(side="left", expand=True, fill="x", padx=3)
 tk.Button(
     ramka_przyciski,
     text="Eksport danych",
@@ -744,6 +815,7 @@ tk.Button(
     fg="white",        # biały tekst
     command=eksport_csv
 ).pack(pady=4)
+
 
 
 # ===== START =====
