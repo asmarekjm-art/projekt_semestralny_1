@@ -393,12 +393,23 @@ def eksport_pdf():
 
     elements = []
 
+    # ===== TYTUŁ =====
+    elements.append(
+        Paragraph(
+            f"Statystyka T-studenta <b>{current_title}</b>",
+            styles["Heading1"]
+        )
+    )
+    elements.append(Spacer(1, 12))
+
+    # ===== DATA =====
     elements.append(
         Paragraph(
             f"Data raportu: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
             styles["Normal"]
         )
     )
+    elements.append(Spacer(1, 12))
     elements.append(Spacer(1, 12))
 
     img = Image(img_buffer)
@@ -445,91 +456,150 @@ def eksport_csv():
         f"Zapisano {len(dane_do_zapisu)} rekordów"
     )
 
-#Statystyka -Tstudenta dla bmi
-def statystyka_ttest():
+#t studenta
 
-    global df, df_filtered
+def okno_ttest():
+
+    global df, df_filtered, current_fig, current_data, current_title
 
     dane = df_filtered if df_filtered is not None else df
 
-    if dane is None or len(dane) == 0:
+    if dane is None:
         messagebox.showwarning("Brak danych", "Najpierw wczytaj dane")
         return
 
-    if "BMI" not in dane.columns or "plec" not in dane.columns:
-        messagebox.showwarning("Błąd", "Brak kolumn BMI lub plec")
-        return
-
-    k = dane[dane["plec"] == "K"]["BMI"].dropna()
-    m = dane[dane["plec"] == "M"]["BMI"].dropna()
-
-    if len(k) < 2 or len(m) < 2:
-        messagebox.showwarning("Błąd", "Za mało danych")
-        return
-
-    # ===== TEST =====
-    t, p = ttest_ind(k, m, equal_var=False)
-
-    tekst = (
-        f"BMI Kobiety vs Mężczyźni\n\n"
-        f"Kobiety: {k.mean():.2f} ± {k.std():.2f} (n={len(k)})\n"
-        f"Mężczyźni: {m.mean():.2f} ± {m.std():.2f} (n={len(m)})\n\n"
-        f"t = {t:.3f}\n"
-        f"p = {p:.5f}"
-    )
-
-    # ===== OKNO =====
     win = tk.Toplevel(okno)
     win.title("Test t-Studenta")
-    win.geometry("700x600")
+    win.geometry("900x650")
 
+    # ===== GÓRA =====
     top = tk.Frame(win)
-    top.pack(fill="x", pady=10)
+    top.pack(fill="x", pady=5)
 
-    tk.Label(
+    tk.Label(top, text="Wybierz analizę:").pack(side="left", padx=5)
+
+    wybor = ttk.Combobox(
         top,
-        text=tekst,
+        values=[
+            "BMI — Płeć",
+            "BMI — Cukrzyca",
+            "BMI — Nadciśnienie",
+            "Wiek — Płeć"
+        ],
+        state="readonly",
+        width=25
+    )
+    wybor.pack(side="left", padx=5)
+    wybor.current(0)
+
+    tk.Button(top, text="Uruchom", command=lambda: rysuj()).pack(side="left", padx=5)
+
+    # ===== ŚRODEK =====
+    plot_frame = tk.Frame(win)
+    plot_frame.pack(fill="both", expand=True)
+
+    wynik_label = tk.Label(
+        win,
+        text="",
         justify="left",
         font=("Arial", 10)
-    ).pack(anchor="w", padx=10)
-
-    # ===== WYKRES =====
-    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-    from matplotlib.figure import Figure
-    import numpy as np
-
-    fig = Figure(figsize=(6, 4))
-    ax = fig.add_subplot(111)
-
-    ax.boxplot(
-        [k, m],
-        labels=["Kobiety", "Mężczyźni"],
-        patch_artist=True
     )
+    wynik_label.pack(pady=5)
 
-    x1 = np.random.normal(1, 0.04, size=len(k))
-    x2 = np.random.normal(2, 0.04, size=len(m))
+    # ===== DÓŁ =====
+    bottom = tk.Frame(win)
+    bottom.pack(fill="x", pady=10)
 
-    ax.scatter(x1, k, alpha=0.6)
-    ax.scatter(x2, m, alpha=0.6)
+    def rysuj():
 
-    ax.set_ylabel("BMI")
-    ax.set_title("BMI — Kobiety vs Mężczyźni")
+        global current_fig, current_data, current_title
 
-    canvas = FigureCanvasTkAgg(fig, master=win)
-    canvas.draw()
-    canvas.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=10)
+        for widget in plot_frame.winfo_children():
+            widget.destroy()
 
-    # ===== PRZYCISK ZAMKNIJ =====
+        typ = wybor.get()
+
+        if typ == "BMI — Płeć":
+            g1 = dane[dane["plec"] == "K"]["BMI"].dropna()
+            g2 = dane[dane["plec"] == "M"]["BMI"].dropna()
+            nazwa1, nazwa2 = "Kobiety", "Mężczyźni"
+            ylabel = "BMI"
+
+        elif typ == "BMI — Cukrzyca":
+            g1 = dane[dane["cukrzyca"] == "tak"]["BMI"].dropna()
+            g2 = dane[dane["cukrzyca"] == "nie"]["BMI"].dropna()
+            nazwa1, nazwa2 = "Cukrzyca", "Brak"
+            ylabel = "BMI"
+
+        elif typ == "BMI — Nadciśnienie":
+            g1 = dane[dane["nadcisnienie"] == "tak"]["BMI"].dropna()
+            g2 = dane[dane["nadcisnienie"] == "nie"]["BMI"].dropna()
+            nazwa1, nazwa2 = "Nadciśnienie", "Brak"
+            ylabel = "BMI"
+
+        elif typ == "Wiek — Płeć":
+            g1 = dane[dane["plec"] == "K"]["wiek"].dropna()
+            g2 = dane[dane["plec"] == "M"]["wiek"].dropna()
+            nazwa1, nazwa2 = "Kobiety", "Mężczyźni"
+            ylabel = "Wiek"
+
+        else:
+            return
+
+        if len(g1) < 2 or len(g2) < 2:
+            wynik_label.config(text="Za mało danych")
+            return
+
+        # ===== TEST =====
+        t, p = ttest_ind(g1, g2, equal_var=False)
+
+        tekst = (
+            f"{nazwa1}: {g1.mean():.2f} ± {g1.std():.2f} (n={len(g1)})\n"
+            f"{nazwa2}: {g2.mean():.2f} ± {g2.std():.2f} (n={len(g2)})\n"
+            f"t = {t:.3f}    p = {p:.4f}"
+        )
+
+        wynik_label.config(text=tekst)
+
+        # ===== WYKRES =====
+        fig = Figure(figsize=(6, 4))
+        ax = fig.add_subplot(111)
+
+        ax.boxplot([g1, g2], tick_labels=[nazwa1, nazwa2])
+
+        ax.set_ylabel(ylabel)
+        ax.set_title(typ)
+        ax.grid(alpha=0.3)
+
+        canvas = FigureCanvasTkAgg(fig, master=plot_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
+
+        current_fig = fig
+        current_data = dane
+        current_title = typ
+
+    # ===== PRZYCISKI =====
+
     tk.Button(
-        win,
+        bottom,
+        text="Eksport PDF",
+        bg="#3949ab",
+        fg="white",
+        width=15,
+        command=eksport_pdf
+    ).pack(side="right", padx=10)
+
+    tk.Button(
+        bottom,
         text="Zamknij",
         bg="#e53935",
         fg="white",
         width=15,
         command=win.destroy
-    ).pack(pady=10)
+    ).pack(side="right", padx=10)
 
+    rysuj()
 
 #zamknij wykres
 def zamknij_wykres():
@@ -728,7 +798,7 @@ tk.Button(
     width=22,
     bg="pink",
     fg="white",
-    command=statystyka_ttest
+    command=okno_ttest
 ).pack(pady=4)
 
 # ===== RAMKA FILTRÓW =====
