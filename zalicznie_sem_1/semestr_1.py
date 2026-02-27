@@ -4,14 +4,13 @@ import pandas as pd
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from scipy.stats import ttest_ind
-
+from datetime import datetime
 #import
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 from reportlab.pdfbase.ttfonts import TTFont
 df = None
 canvas = None
@@ -393,7 +392,12 @@ def eksport_pdf():
 
     elements = []
 
-    elements.append(Paragraph(current_title, styles["Heading1"]))
+    elements.append(
+        Paragraph(
+            f"Data raportu: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            styles["Normal"]
+        )
+    )
     elements.append(Spacer(1, 12))
 
     img = Image(img_buffer)
@@ -403,25 +407,13 @@ def eksport_pdf():
     elements.append(img)
     elements.append(Spacer(1, 12))
 
-    if current_data is not None and len(current_data) > 0:
-
-        data_table = [list(current_data.columns)]
-
-        for _, row in current_data.head(20).iterrows():
-            data_table.append([str(x) for x in row])
-
-        table = Table(data_table, repeatRows=1)
-
-        table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
-            ("FONTNAME", (0, 0), (-1, -1), "Arial"),
-            ("FONTSIZE", (0, 0), (-1, -1), 8),
-        ]))
-
-        elements.append(Paragraph("Dane (pierwsze 20 rekordów)", styles["Heading2"]))
-        elements.append(table)
-
+    if current_data is not None:
+        elements.append(
+            Paragraph(
+                f"Liczba pacjentów w analizie (N = {len(current_data)})",
+                styles["Normal"]
+            )
+        )
     doc.build(elements)
 
     messagebox.showinfo("Sukces", f"Zapisano PDF:\n{path}")
@@ -775,9 +767,6 @@ sekcja_nad.pack(fill="x", pady=5)
 
 tk.Checkbutton(sekcja_nad, text="Tak", variable=var_nad_tak, bg="#f5f6fa").pack(anchor="w")
 tk.Checkbutton(sekcja_nad, text="Nie", variable=var_nad_nie, bg="#f5f6fa").pack(anchor="w")
-
-frame_btn = tk.Frame(ramka_filtry, bg="#f5f6fa")
-frame_btn.pack(fill="x", pady=5)
 
 frame_btn = tk.Frame(ramka_filtry, bg="#f5f6fa")
 frame_btn.pack(fill="x", pady=8)
