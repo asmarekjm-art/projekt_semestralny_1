@@ -12,6 +12,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+
 df = None
 canvas = None
 
@@ -444,8 +445,9 @@ def eksport_csv():
         f"Zapisano {len(dane_do_zapisu)} rekordów"
     )
 
-#Statystyka Tstudenta
+#Statystyka -Tstudenta dla bmi
 def statystyka_ttest():
+
     global df, df_filtered
 
     dane = df_filtered if df_filtered is not None else df
@@ -454,69 +456,80 @@ def statystyka_ttest():
         messagebox.showwarning("Brak danych", "Najpierw wczytaj dane")
         return
 
-    wyniki = []
-
-    try:
-
-        # ===== BMI K vs M =====
-        if "BMI" in dane.columns and "plec" in dane.columns:
-
-            k = dane[dane["plec"] == "K"]["BMI"].dropna()
-            m = dane[dane["plec"] == "M"]["BMI"].dropna()
-
-            if len(k) > 1 and len(m) > 1:
-                t, p = ttest_ind(k, m, equal_var=False)
-
-                wyniki.append(
-                    f"BMI Kobiety vs Mężczyźni\n"
-                    f"K: {k.mean():.2f} ± {k.std():.2f} (n={len(k)})\n"
-                    f"M: {m.mean():.2f} ± {m.std():.2f} (n={len(m)})\n"
-                    f"p = {p:.4f}\n"
-                )
-
-        # ===== BMI cukrzyca =====
-        if "BMI" in dane.columns and "cukrzyca" in dane.columns:
-
-            tak = dane[dane["cukrzyca"] == "tak"]["BMI"].dropna()
-            nie = dane[dane["cukrzyca"] == "nie"]["BMI"].dropna()
-
-            if len(tak) > 1 and len(nie) > 1:
-                t, p = ttest_ind(tak, nie, equal_var=False)
-
-                wyniki.append(
-                    f"BMI Cukrzyca vs Brak\n"
-                    f"Cukrzyca: {tak.mean():.2f} ± {tak.std():.2f} (n={len(tak)})\n"
-                    f"Brak: {nie.mean():.2f} ± {nie.std():.2f} (n={len(nie)})\n"
-                    f"p = {p:.4f}\n"
-                )
-
-        # ===== BMI nadciśnienie =====
-        if "BMI" in dane.columns and "nadcisnienie" in dane.columns:
-
-            tak = dane[dane["nadcisnienie"] == "tak"]["BMI"].dropna()
-            nie = dane[dane["nadcisnienie"] == "nie"]["BMI"].dropna()
-
-            if len(tak) > 1 and len(nie) > 1:
-                t, p = ttest_ind(tak, nie, equal_var=False)
-
-                wyniki.append(
-                    f"BMI Nadciśnienie vs Brak\n"
-                    f"Nadciśnienie: {tak.mean():.2f} ± {tak.std():.2f} (n={len(tak)})\n"
-                    f"Brak: {nie.mean():.2f} ± {nie.std():.2f} (n={len(nie)})\n"
-                    f"p = {p:.4f}\n"
-                )
-
-    except Exception as e:
-        messagebox.showerror("Błąd", str(e))
+    if "BMI" not in dane.columns or "plec" not in dane.columns:
+        messagebox.showwarning("Błąd", "Brak kolumn BMI lub plec")
         return
 
-    if not wyniki:
-        messagebox.showinfo("Wyniki", "Brak danych do testów")
+    k = dane[dane["plec"] == "K"]["BMI"].dropna()
+    m = dane[dane["plec"] == "M"]["BMI"].dropna()
+
+    if len(k) < 2 or len(m) < 2:
+        messagebox.showwarning("Błąd", "Za mało danych")
         return
 
-    tekst = "\n-----------------------\n".join(wyniki)
+    # ===== TEST =====
+    t, p = ttest_ind(k, m, equal_var=False)
 
-    messagebox.showinfo("Test t-Studenta", tekst)
+    tekst = (
+        f"BMI Kobiety vs Mężczyźni\n\n"
+        f"Kobiety: {k.mean():.2f} ± {k.std():.2f} (n={len(k)})\n"
+        f"Mężczyźni: {m.mean():.2f} ± {m.std():.2f} (n={len(m)})\n\n"
+        f"t = {t:.3f}\n"
+        f"p = {p:.5f}"
+    )
+
+    # ===== OKNO =====
+    win = tk.Toplevel(okno)
+    win.title("Test t-Studenta")
+    win.geometry("700x600")
+
+    top = tk.Frame(win)
+    top.pack(fill="x", pady=10)
+
+    tk.Label(
+        top,
+        text=tekst,
+        justify="left",
+        font=("Arial", 10)
+    ).pack(anchor="w", padx=10)
+
+    # ===== WYKRES =====
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+    from matplotlib.figure import Figure
+    import numpy as np
+
+    fig = Figure(figsize=(6, 4))
+    ax = fig.add_subplot(111)
+
+    ax.boxplot(
+        [k, m],
+        labels=["Kobiety", "Mężczyźni"],
+        patch_artist=True
+    )
+
+    x1 = np.random.normal(1, 0.04, size=len(k))
+    x2 = np.random.normal(2, 0.04, size=len(m))
+
+    ax.scatter(x1, k, alpha=0.6)
+    ax.scatter(x2, m, alpha=0.6)
+
+    ax.set_ylabel("BMI")
+    ax.set_title("BMI — Kobiety vs Mężczyźni")
+
+    canvas = FigureCanvasTkAgg(fig, master=win)
+    canvas.draw()
+    canvas.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=10)
+
+    # ===== PRZYCISK ZAMKNIJ =====
+    tk.Button(
+        win,
+        text="Zamknij",
+        bg="#e53935",
+        fg="white",
+        width=15,
+        command=win.destroy
+    ).pack(pady=10)
+
 
 #zamknij wykres
 def zamknij_wykres():
@@ -591,6 +604,7 @@ def okno_wykresy():
             wykres_cukrzyca_typ_kolowy()
         elif typ == "Leki na cukrzycę":
             wykres_leki_cukrzyca()
+
         else:
             return
 
