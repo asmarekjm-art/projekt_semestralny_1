@@ -781,6 +781,9 @@ def rysuj_wykres():
 
     global canvas
 
+    if df is None:
+        return
+
     if canvas:
         canvas.get_tk_widget().destroy()
 
@@ -805,6 +808,81 @@ def rysuj_wykres():
 
     canvas.draw()
     canvas.get_tk_widget().pack(fill="both", expand=True)
+
+# RYSOWANIE TESTU STATYSTYCZNEGO
+
+def rysuj_test():
+
+    global current_fig
+
+    dane = get_dane()
+
+    if dane is None:
+        return
+
+    for widget in plot_stat.winfo_children():
+        widget.destroy()
+
+    typ = wybor_test.get()
+
+    if typ == "BMI — Płeć":
+        g1 = dane[dane["plec"] == "K"]["BMI"].dropna()
+        g2 = dane[dane["plec"] == "M"]["BMI"].dropna()
+        nazwa1, nazwa2 = "Kobiety", "Mężczyźni"
+        ylabel = "BMI"
+
+    elif typ == "BMI — Cukrzyca":
+        g1 = dane[dane["cukrzyca"] == "tak"]["BMI"].dropna()
+        g2 = dane[dane["cukrzyca"] == "nie"]["BMI"].dropna()
+        nazwa1, nazwa2 = "Cukrzyca", "Brak"
+        ylabel = "BMI"
+
+    elif typ == "BMI — Nadciśnienie":
+        g1 = dane[dane["nadcisnienie"] == "tak"]["BMI"].dropna()
+        g2 = dane[dane["nadcisnienie"] == "nie"]["BMI"].dropna()
+        nazwa1, nazwa2 = "Nadciśnienie", "Brak"
+        ylabel = "BMI"
+
+    elif typ == "Wiek — Płeć":
+        g1 = dane[dane["plec"] == "K"]["wiek"].dropna()
+        g2 = dane[dane["plec"] == "M"]["wiek"].dropna()
+        nazwa1, nazwa2 = "Kobiety", "Mężczyźni"
+        ylabel = "Wiek"
+
+    else:
+        return
+
+
+    if len(g1) < 2 or len(g2) < 2:
+        wynik_stat.config(text="Za mało danych")
+        return
+
+
+    t, p = ttest_ind(g1, g2, equal_var=False)
+
+    tekst = (
+        f"{nazwa1}: {g1.mean():.2f} ± {g1.std():.2f} (n={len(g1)})\n"
+        f"{nazwa2}: {g2.mean():.2f} ± {g2.std():.2f} (n={len(g2)})\n"
+        f"t = {t:.3f}    p = {p:.4f}"
+    )
+
+    wynik_stat.config(text=tekst)
+
+
+    fig = Figure(figsize=(6,4))
+    ax = fig.add_subplot(111)
+
+    ax.boxplot([g1, g2], tick_labels=[nazwa1, nazwa2])
+
+    ax.set_ylabel(ylabel)
+    ax.set_title(typ)
+    ax.grid(alpha=0.3)
+
+    canvas = FigureCanvasTkAgg(fig, master=plot_stat)
+    canvas.draw()
+    canvas.get_tk_widget().pack(fill="both", expand=True)
+
+    current_fig = fig
 
 # INTERFEJS GRAFICZNY APLIKACJI (GUI)
 
@@ -927,38 +1005,86 @@ tabela.pack(fill="both", expand=True)
 
 # PANEL WYKRESÓW
 
-ttk.Label(tab_wykresy, text="Wybierz wykres", font=("Arial", 12)).pack(pady=10)
+top_wykres = ttk.Frame(tab_wykresy)
+top_wykres.pack(pady=15)
+
+ttk.Label(top_wykres, text="Wybierz wykres:", font=("Arial", 12)).pack(side="left", padx=5)
 
 wybor_wykres = ttk.Combobox(
-    tab_wykresy,
+    top_wykres,
     values=[
         "BMI",
         "Nadciśnienie %",
         "Cukrzyca typy %",
         "Leki na cukrzycę"
     ],
-    state="readonly"
+    state="readonly",
+    width=25
 )
 
-wybor_wykres.pack(pady=5)
+wybor_wykres.pack(side="left", padx=5)
 wybor_wykres.current(0)
 
+wybor_wykres.bind("<<ComboboxSelected>>", lambda e: rysuj_wykres())
+
 ttk.Button(
-    tab_wykresy,
-    text="Pokaż wykres",
-    command=rysuj_wykres
-).pack(pady=5)
+    top_wykres,
+    text="Eksport PDF",
+    command=eksport_pdf
+).pack(side="left", padx=10)
 
 plot_frame = ttk.Frame(tab_wykresy)
 plot_frame.pack(fill="both", expand=True)
 
-#PANEL ANALIZY STATYSTCZNEJ
+# PANEL ANALIZY STATYSTYCZNEJ
+
+top_stat = ttk.Frame(tab_stat)
+top_stat.pack(pady=10)
+
+ttk.Label(
+    top_stat,
+    text="Wybierz analizę:",
+    font=("Arial", 11)
+).pack(side="left", padx=5)
+
+wybor_test = ttk.Combobox(
+    top_stat,
+    values=[
+        "BMI — Płeć",
+        "BMI — Cukrzyca",
+        "BMI — Nadciśnienie",
+        "Wiek — Płeć"
+    ],
+    state="readonly",
+    width=25
+)
+
+wybor_test.pack(side="left", padx=5)
+wybor_test.current(0)
 
 ttk.Button(
+    top_stat,
+    text="Uruchom test",
+    command=lambda: rysuj_test()
+).pack(side="left", padx=10)
+
+
+# RAMKA NA WYKRES
+
+plot_stat = ttk.Frame(tab_stat)
+plot_stat.pack(fill="both", expand=True)
+
+
+# WYNIK TESTU
+
+wynik_stat = ttk.Label(
     tab_stat,
-    text="Uruchom test t-Studenta",
-    command=okno_ttest
-).pack(pady=20)
+    text="",
+    font=("Arial", 10),
+    justify="left"
+)
+
+wynik_stat.pack(pady=10)
 
 
 # ===== PŁEĆ =====
@@ -1022,4 +1148,5 @@ btn_reset.pack(side="left", expand=True, fill="x", padx=3)
 
 
 # START APLIKACJI
+okno.after(100, rysuj_wykres)
 okno.mainloop()
