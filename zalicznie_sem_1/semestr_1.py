@@ -783,19 +783,8 @@ notebook.pack(fill="both", expand=True)
 
 #zakladki
 tab_dane = ttk.Frame(notebook, padding=10)
-
-notebook_dane = ttk.Notebook(tab_dane)
-notebook_dane.pack(fill="both", expand=True)
-
-tab_tabela = ttk.Frame(notebook_dane)
-tab_filtry = ttk.Frame(notebook_dane)
-
-notebook_dane.add(tab_tabela, text="Tabela")
-notebook_dane.add(tab_filtry, text="Filtry")
-
 tab_wykresy = ttk.Frame(notebook, padding=10)
 tab_stat = ttk.Frame(notebook, padding=10)
-
 
 notebook.add(tab_dane, text="Dane")
 notebook.add(tab_wykresy, text="Wykresy")
@@ -812,7 +801,7 @@ var_nad_tak = tk.BooleanVar(value=True)
 var_nad_nie = tk.BooleanVar(value=True)
 
 # ===== LEWA STRONA =====
-toolbar = ttk.Frame(tab_tabela)
+toolbar = ttk.Frame(tab_dane)
 toolbar.pack(fill="x", pady=5)
 
 ttk.Button(
@@ -839,13 +828,18 @@ ttk.Button(
     command=eksport_pdf
 ).pack(side="left", padx=5)
 
-ramka_tabela = ttk.Frame(tab_tabela)
+ramka_filtry = ttk.LabelFrame(
+    tab_dane,
+    text="Filtry danych",
+    padding=10
+)
+ramka_filtry.pack(fill="x", padx=10, pady=10)
+ramka_filtry.columnconfigure(0, weight=1)
+ramka_filtry.columnconfigure(1, weight=1)
+
+ramka_tabela = ttk.Frame(tab_dane)
 ramka_tabela.pack(fill="both", expand=True)
 ramka_tabela.pack_propagate(False)
-
-ramka_przyciski = ttk.Frame(tab_filtry)
-ramka_przyciski.pack(side="right", fill="y", padx=10, pady=10)
-ramka_przyciski.pack_propagate(False)
 
 # ramka dla tabeli i scrolli
 ramka_tree = ttk.Frame(ramka_tabela)
@@ -862,10 +856,6 @@ scroll_y.pack(side="right", fill="y")
 scroll_x.pack(side="bottom", fill="x")
 
 tabela.pack(fill="both", expand=True)
-
-# ===== PRAWA STRONA =====
-ttk.Label(ramka_przyciski, text="Panel sterowania", font=("Arial", 10, "bold")).pack(pady=5)
-
 
 
 # ===== MENU WYKRESÓW =====
@@ -900,18 +890,10 @@ ttk.Button(
     command=okno_ttest
 ).pack(pady=20)
 
-# ===== RAMKA FILTRÓW =====
-ramka_filtry = ttk.LabelFrame(
-    ramka_przyciski,
-    text="Filtry danych",
-    padding=10
-)
-ramka_filtry.pack(pady=8, fill="x")
-
 
 # ===== PŁEĆ =====
 sekcja_plec = ttk.LabelFrame(ramka_filtry, text="Płeć")
-sekcja_plec.pack(fill="x", pady=5)
+sekcja_plec.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
 
 ttk.Checkbutton(sekcja_plec, text="Kobiety", variable=var_k).pack(anchor="w")
 ttk.Checkbutton(sekcja_plec, text="Mężczyźni", variable=var_m).pack(anchor="w")
@@ -919,7 +901,7 @@ ttk.Checkbutton(sekcja_plec, text="Mężczyźni", variable=var_m).pack(anchor="w
 
 # ===== WIEK =====
 sekcja_wiek = ttk.LabelFrame(ramka_filtry, text="Wiek")
-sekcja_wiek.pack(fill="x", pady=5)
+sekcja_wiek.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
 
 wiek_frame = ttk.Frame(sekcja_wiek)
 wiek_frame.pack(fill="x")
@@ -935,7 +917,7 @@ entry_max.grid(row=0, column=3, padx=5)
 
 # ===== CUKRZYCA =====
 sekcja_cuk = ttk.LabelFrame(ramka_filtry, text="Cukrzyca")
-sekcja_cuk.pack(fill="x", pady=5)
+sekcja_cuk.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
 
 ttk.Checkbutton(sekcja_cuk, text="Tak", variable=var_cuk_tak).pack(anchor="w")
 ttk.Checkbutton(sekcja_cuk, text="Nie", variable=var_cuk_nie).pack(anchor="w")
@@ -943,28 +925,14 @@ ttk.Checkbutton(sekcja_cuk, text="Nie", variable=var_cuk_nie).pack(anchor="w")
 
 # ===== NADCIŚNIENIE =====
 sekcja_nad = ttk.LabelFrame(ramka_filtry, text="Nadciśnienie")
-sekcja_nad.pack(fill="x", pady=5)
+sekcja_nad.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
 
 ttk.Checkbutton(sekcja_nad, text="Tak", variable=var_nad_tak).pack(anchor="w")
 ttk.Checkbutton(sekcja_nad, text="Nie", variable=var_nad_nie).pack(anchor="w")
 
 frame_btn = ttk.Frame(ramka_filtry)
-frame_btn.pack(fill="x", pady=8)
+frame_btn.grid(row=2, column=0, columnspan=2, pady=5)
 
-frame_export = ttk.Frame(ramka_filtry)
-frame_export.pack(fill="x", pady=5)
-
-ttk.Button(
-    frame_export,
-    text="Eksport CSV",
-    command=eksport_csv
-).pack(side="left", expand=True, fill="x", padx=3)
-
-ttk.Button(
-    frame_export,
-    text="Eksport PDF",
-    command=eksport_pdf
-).pack(side="left", expand=True, fill="x", padx=3)
 
 btn_filtruj = ttk.Button(
     frame_btn,
@@ -981,13 +949,6 @@ btn_reset = ttk.Button(
 )
 
 btn_reset.pack(side="left", expand=True, fill="x", padx=3)
-ttk.Button(
-    ramka_przyciski,
-    text="Eksport danych",
-    width=22,
-    command=eksport_csv
-).pack(pady=4)
-
 
 
 # ===== START =====
