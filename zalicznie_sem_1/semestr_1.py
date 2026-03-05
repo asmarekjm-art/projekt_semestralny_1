@@ -1,17 +1,19 @@
-import tkinter as tk
 from tkinter import filedialog, messagebox
-import pandas as pd
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from scipy.stats import ttest_ind
 from datetime import datetime
-#import
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
-from reportlab.lib.styles import getSampleStyleSheet
+from tkinter import ttk
+
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
 from reportlab.lib.pagesizes import A4
-from reportlab.lib import colors
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.styles import getSampleStyleSheet
+
+import pandas as pd
+import ttkbootstrap as tk
+import tkinter as tk2
 
 df = None
 canvas = None
@@ -35,7 +37,7 @@ def wczytaj_dane():
 
     try:
         df = pd.read_csv(path)
-        # ===== oblicz BMI jeśli są dane =====
+     # ===== oblicz BMI jeśli są dane =====
         if "waga" in df.columns and "wzrost" in df.columns:
             df["BMI"] = df["waga"] / (df["wzrost"] / 100) ** 2
 
@@ -57,15 +59,22 @@ def wczytaj_dane():
     except Exception as e:
         messagebox.showerror("Błąd", f"Nie udało się wczytać pliku:\n{e}")
 
-
-
 # ======================
 # POKAZ DANE
 # ======================
 def pokaz(dane):
-    pole.delete("1.0", tk.END)
-    pole.insert(tk.END, dane.to_string())
 
+    tabela.delete(*tabela.get_children())
+
+    tabela["columns"] = list(dane.columns)
+    tabela["show"] = "headings"
+
+    for col in dane.columns:
+        tabela.heading(col, text=col)
+        tabela.column(col, anchor="center", width=100, stretch=False)
+
+    for _, row in dane.iterrows():
+        tabela.insert("", "end", values=list(row))
 
 # ======================
 # FILTRUJ
@@ -186,6 +195,7 @@ def wykres_bmi():
 
 #=====
 #nadcisnienie
+
 def wykres_nadcisnienie_kolowy():
     global df, canvas
     dane = df_filtered if df_filtered is not None else df
@@ -333,8 +343,7 @@ def pokaz_statystyki(dane):
 
     if dane is None or len(dane) == 0:
         stat_label.config(
-            text="Brak danych",
-            bg="#f8d7da"
+            text="Brak danych"
         )
         return
 
@@ -356,10 +365,8 @@ def pokaz_statystyki(dane):
     )
 
     stat_label.config(
-        text=tekst,
-        bg="#d4edda"
-    )
-
+        text=tekst)
+#========
 #PDF
 def eksport_pdf():
 
@@ -429,7 +436,7 @@ def eksport_pdf():
     doc.build(elements)
 
     messagebox.showinfo("Sukces", f"Zapisano PDF:\n{path}")
-
+#=========
 #eksport danych do csv
 
 def eksport_csv():
@@ -456,12 +463,13 @@ def eksport_csv():
         f"Zapisano {len(dane_do_zapisu)} rekordów"
     )
 
+
+#========
 #t studenta
 
 def okno_ttest():
 
     global df, df_filtered, current_fig, current_data, current_title
-
     dane = df_filtered if df_filtered is not None else df
 
     if dane is None:
@@ -473,10 +481,10 @@ def okno_ttest():
     win.geometry("900x650")
 
     # ===== GÓRA =====
-    top = tk.Frame(win)
+    top = ttk.Frame(win)
     top.pack(fill="x", pady=5)
 
-    tk.Label(top, text="Wybierz analizę:").pack(side="left", padx=5)
+    ttk.Label(top, text="Wybierz analizę:").pack(side="left", padx=5)
 
     wybor = ttk.Combobox(
         top,
@@ -492,13 +500,13 @@ def okno_ttest():
     wybor.pack(side="left", padx=5)
     wybor.current(0)
 
-    tk.Button(top, text="Uruchom", command=lambda: rysuj()).pack(side="left", padx=5)
+    ttk.Button(top, text="Uruchom", command=lambda: rysuj()).pack(side="left", padx=5)
 
     # ===== ŚRODEK =====
-    plot_frame = tk.Frame(win)
+    plot_frame = ttk.Frame(win)
     plot_frame.pack(fill="both", expand=True)
 
-    wynik_label = tk.Label(
+    wynik_label = ttk.Label(
         win,
         text="",
         justify="left",
@@ -507,7 +515,7 @@ def okno_ttest():
     wynik_label.pack(pady=5)
 
     # ===== DÓŁ =====
-    bottom = tk.Frame(win)
+    bottom = ttk.Frame(win)
     bottom.pack(fill="x", pady=10)
 
     def rysuj():
@@ -581,20 +589,18 @@ def okno_ttest():
 
     # ===== PRZYCISKI =====
 
-    tk.Button(
+    ttk.Button(
         bottom,
         text="Eksport PDF",
-        bg="#3949ab",
-        fg="white",
+        bootstyle="success",
         width=15,
         command=eksport_pdf
     ).pack(side="right", padx=10)
 
-    tk.Button(
+    ttk.Button(
         bottom,
         text="Zamknij",
-        bg="#e53935",
-        fg="white",
+        bootstyle="danger",
         width=15,
         command=win.destroy
     ).pack(side="right", padx=10)
@@ -613,8 +619,6 @@ def zamknij_wykres():
 
 
 #okno z wykresami
-from tkinter import ttk
-
 def okno_wykresy():
 
     global canvas
@@ -628,10 +632,10 @@ def okno_wykresy():
     win.geometry("900x600")
 
     # ===== GÓRA =====
-    top = tk.Frame(win)
+    top = ttk.Frame(win)
     top.pack(fill="x", pady=5)
 
-    tk.Label(top, text="Wybierz wykres:").pack(side="left", padx=5)
+    ttk.Label(top, text="Wybierz wykres:").pack(side="left", padx=5)
 
     wybor = ttk.Combobox(
         top,
@@ -647,14 +651,14 @@ def okno_wykresy():
     wybor.pack(side="left", padx=5)
     wybor.current(0)
 
-    tk.Button(top, text="Pokaż", command=lambda: rysuj()).pack(side="left", padx=5)
+    ttk.Button(top, text="Pokaż", command=lambda: rysuj()).pack(side="left", padx=5)
 
     # ===== ŚRODEK =====
-    plot_frame = tk.Frame(win)
+    plot_frame = ttk.Frame(win)
     plot_frame.pack(fill="both", expand=True)
 
     # ===== DÓŁ =====
-    bottom = tk.Frame(win)
+    bottom = ttk.Frame(win)
     bottom.pack(fill="x", pady=10)
 
     def rysuj():
@@ -682,20 +686,18 @@ def okno_wykresy():
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
 
-    tk.Button(
+    ttk.Button(
         bottom,
         text="Eksport PDF",
-        bg="#3949ab",
-        fg="white",
+        bootstyle="success",
         width=15,
         command=eksport_pdf
     ).pack(side="right", padx=10)
 
-    tk.Button(
+    ttk.Button(
         bottom,
         text="Zamknij",
-        bg="#e53935",
-        fg="white",
+        bootstyle="danger",
         width=15,
         command=win.destroy
     ).pack(side="right", padx=10)
@@ -723,23 +725,32 @@ def reset_filtry():
     if df is not None:
         pokaz(df)
         pokaz_statystyki(df)
+
+
 # ======================
 # GUI
 # ======================
-okno = tk.Tk()
+okno = tk.Window(themename="flatly")
 okno.title("Analiza pacjentów")
 
+okno.geometry("1200x700")
+okno.minsize(1150, 600)
+
+style = ttk.Style()
+style.configure("Treeview", rowheight=28, font=("Segoe UI", 10))
+style.configure("Treeview.Heading", font=("Segoe UI", 10, "bold"))
+
 #===statystyka
-stat_label = tk.Label(
+stat_label = ttk.Label(
     okno,
     text="Brak danych",
     font=("Arial", 10, "bold"),
-    bg="#f8d7da",
-    anchor="w",
-    padx=10
+    anchor="w"
 )
 
-stat_label.pack(fill="x")
+stat_label.pack(fill="x", padx=10, pady=5)
+main_frame = ttk.Frame(okno)
+main_frame.pack(fill="both", expand=True)
 
 # ===== ZMIENNE =====
 var_k = tk.BooleanVar(value=True)
@@ -750,142 +761,134 @@ var_nad_tak = tk.BooleanVar(value=True)
 var_nad_nie = tk.BooleanVar(value=True)
 
 # ===== LEWA STRONA =====
-ramka_tabela = tk.Frame(okno)
-ramka_tabela.pack(side="left", fill="both", expand=True)
+ramka_tabela = ttk.Frame(main_frame, width=850)
+ramka_tabela.pack(side="left", fill="both")
+ramka_tabela.pack_propagate(False)
 
-scroll = tk.Scrollbar(ramka_tabela)
-scroll.pack(side="right", fill="y")
+ramka_przyciski = ttk.Frame(main_frame, width=260)
+ramka_przyciski.pack(side="right", fill="y", padx=10, pady=10)
+ramka_przyciski.pack_propagate(False)
 
-pole = tk.Text(ramka_tabela, wrap="none", yscrollcommand=scroll.set)
-pole.pack(side="left", fill="both", expand=True)
+# ramka dla tabeli i scrolli
+ramka_tree = ttk.Frame(ramka_tabela)
+ramka_tree.pack(fill="both", expand=True)
 
-scroll.config(command=pole.yview)
+tabela = ttk.Treeview(ramka_tree)
+
+scroll_y = ttk.Scrollbar(ramka_tree, orient="vertical", command=tabela.yview)
+scroll_x = ttk.Scrollbar(ramka_tree, orient="horizontal", command=tabela.xview)
+
+tabela.configure(yscrollcommand=scroll_y.set, xscrollcommand=scroll_x.set)
+
+scroll_y.pack(side="right", fill="y")
+scroll_x.pack(side="bottom", fill="x")
+
+tabela.pack(fill="both", expand=True)
 
 # ===== PRAWA STRONA =====
-ramka_przyciski = tk.Frame(okno)
-ramka_przyciski.pack(side="right", fill="y", padx=10, pady=10)
-
-tk.Label(ramka_przyciski, text="Panel sterowania", font=("Arial", 10, "bold")).pack(pady=5)
+ttk.Label(ramka_przyciski, text="Panel sterowania", font=("Arial", 10, "bold")).pack(pady=5)
 
 #wczytak dane
-tk.Button(
+ttk.Button(
     ramka_przyciski,
     text="Wczytaj CSV",
     width=22,
-    bg="royal blue",
-    fg="white",
-    activebackground="#c62828",
-    activeforeground="white",
+    bootstyle="primary",
     command=wczytaj_dane
 ).pack(pady=4)
 
 
 # ===== MENU WYKRESÓW =====
-tk.Button(
+ttk.Button(
     ramka_przyciski,
     text="Wykresy",
     width=22,
-    bg="royal blue",
-    fg="white",
+    bootstyle="info",
     command=okno_wykresy
 ).pack(pady=4)
 
-
 #statystyka
-tk.Button(
+ttk.Button(
     ramka_przyciski,
     text="Statystyka t-Studenta",
     width=22,
-    bg="pink",
-    fg="white",
+    bootstyle="warning",
     command=okno_ttest
 ).pack(pady=4)
 
 # ===== RAMKA FILTRÓW =====
-ramka_filtry = tk.LabelFrame(
+ramka_filtry = ttk.LabelFrame(
     ramka_przyciski,
     text="Filtry pacjentów",
-    padx=10,
-    pady=10,
-    bg="#f5f6fa",
-    font=("Arial", 9, "bold")
+    padding=10
 )
 ramka_filtry.pack(pady=8, fill="x")
 
 
 # ===== PŁEĆ =====
-sekcja_plec = tk.LabelFrame(ramka_filtry, text="Płeć", bg="#f5f6fa")
+sekcja_plec = ttk.LabelFrame(ramka_filtry, text="Płeć")
 sekcja_plec.pack(fill="x", pady=5)
 
-tk.Checkbutton(sekcja_plec, text="Kobiety", variable=var_k, bg="#f5f6fa").pack(anchor="w")
-tk.Checkbutton(sekcja_plec, text="Mężczyźni", variable=var_m, bg="#f5f6fa").pack(anchor="w")
+ttk.Checkbutton(sekcja_plec, text="Kobiety", variable=var_k).pack(anchor="w")
+ttk.Checkbutton(sekcja_plec, text="Mężczyźni", variable=var_m).pack(anchor="w")
 
 
 # ===== WIEK =====
-sekcja_wiek = tk.LabelFrame(ramka_filtry, text="Wiek", bg="#f5f6fa")
+sekcja_wiek = ttk.LabelFrame(ramka_filtry, text="Wiek")
 sekcja_wiek.pack(fill="x", pady=5)
 
-wiek_frame = tk.Frame(sekcja_wiek, bg="#f5f6fa")
+wiek_frame = ttk.Frame(sekcja_wiek)
 wiek_frame.pack(fill="x")
 
-tk.Label(wiek_frame, text="Od:", bg="#f5f6fa").grid(row=0, column=0, sticky="w")
+ttk.Label(wiek_frame, text="Od:").grid(row=0, column=0, sticky="w")
 entry_min = tk.Entry(wiek_frame, width=8)
 entry_min.grid(row=0, column=1, padx=5)
 
-tk.Label(wiek_frame, text="Do:", bg="#f5f6fa").grid(row=0, column=2, sticky="w")
+ttk.Label(wiek_frame, text="Do:").grid(row=0, column=2, sticky="w")
 entry_max = tk.Entry(wiek_frame, width=8)
 entry_max.grid(row=0, column=3, padx=5)
 
 
 # ===== CUKRZYCA =====
-sekcja_cuk = tk.LabelFrame(ramka_filtry, text="Cukrzyca", bg="#f5f6fa")
+sekcja_cuk = ttk.LabelFrame(ramka_filtry, text="Cukrzyca")
 sekcja_cuk.pack(fill="x", pady=5)
 
-tk.Checkbutton(sekcja_cuk, text="Tak", variable=var_cuk_tak, bg="#f5f6fa").pack(anchor="w")
-tk.Checkbutton(sekcja_cuk, text="Nie", variable=var_cuk_nie, bg="#f5f6fa").pack(anchor="w")
+ttk.Checkbutton(sekcja_cuk, text="Tak", variable=var_cuk_tak).pack(anchor="w")
+ttk.Checkbutton(sekcja_cuk, text="Nie", variable=var_cuk_nie).pack(anchor="w")
 
 
 # ===== NADCIŚNIENIE =====
-sekcja_nad = tk.LabelFrame(ramka_filtry, text="Nadciśnienie", bg="#f5f6fa")
+sekcja_nad = ttk.LabelFrame(ramka_filtry, text="Nadciśnienie")
 sekcja_nad.pack(fill="x", pady=5)
 
-tk.Checkbutton(sekcja_nad, text="Tak", variable=var_nad_tak, bg="#f5f6fa").pack(anchor="w")
-tk.Checkbutton(sekcja_nad, text="Nie", variable=var_nad_nie, bg="#f5f6fa").pack(anchor="w")
+ttk.Checkbutton(sekcja_nad, text="Tak", variable=var_nad_tak).pack(anchor="w")
+ttk.Checkbutton(sekcja_nad, text="Nie", variable=var_nad_nie).pack(anchor="w")
 
-frame_btn = tk.Frame(ramka_filtry, bg="#f5f6fa")
+frame_btn = ttk.Frame(ramka_filtry)
 frame_btn.pack(fill="x", pady=8)
 
-btn_filtruj = tk.Button(
+btn_filtruj = ttk.Button(
     frame_btn,
     text="Filtruj",
-    bg="#43a047",
-    fg="white",
-    activebackground="#2e7d32",
-    activeforeground="white",
-    relief="flat",
-    height=1,
+    bootstyle="success",
     command=filtruj_dane
 )
+
 btn_filtruj.pack(side="left", expand=True, fill="x", padx=3)
 
-btn_reset = tk.Button(
+btn_reset = ttk.Button(
     frame_btn,
     text="Reset",
-    bg="#757575",
-    fg="white",
-    activebackground="#424242",
-    activeforeground="white",
-    relief="flat",
-    height=1,
+    bootstyle="secondary",
     command=reset_filtry
 )
+
 btn_reset.pack(side="left", expand=True, fill="x", padx=3)
-tk.Button(
+ttk.Button(
     ramka_przyciski,
     text="Eksport danych",
     width=22,
-    bg="#4CAF50",      # zielony
-    fg="white",        # biały tekst
+    bootstyle="success",
     command=eksport_csv
 ).pack(pady=4)
 
