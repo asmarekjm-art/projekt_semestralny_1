@@ -1,3 +1,5 @@
+#IMPORT BIBLIOTEK
+
 from tkinter import filedialog, messagebox
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
@@ -14,20 +16,24 @@ from reportlab.lib.styles import getSampleStyleSheet
 import pandas as pd
 import ttkbootstrap as tk
 
+#ZMIENNE GLOBALNE
+
 df = None
 canvas = None
-
 df_filtered = None
 
 current_fig = None
 current_data = None
 current_title = ""
+
+#FUNKCJE POMOCNICZE
+
 def get_dane():
     return df_filtered if df_filtered is not None else df
 
-# ======================
-# WCZYTYWANIE CSV
-# ======================
+
+# WCZYTYWANIE DANYCH CSV
+
 def wczytaj_dane():
     global df
 
@@ -38,11 +44,11 @@ def wczytaj_dane():
 
     try:
         df = pd.read_csv(path, sep=None, engine="python")
-     # ===== oblicz BMI jeśli są dane =====
+# ===== oblicz BMI jeśli są dane =====
         if "waga" in df.columns and "wzrost" in df.columns:
             df["BMI"] = df["waga"] / (df["wzrost"] / 100) ** 2
 
-        # ===== nadciśnienie z ciśnienia =====
+ # ===== nadciśnienie z ciśnienia =====
         if "cisnienie" in df.columns:
             def nadcisnienie(val):
                 try:
@@ -60,9 +66,30 @@ def wczytaj_dane():
     except Exception as e:
         messagebox.showerror("Błąd", f"Nie udało się wczytać pliku:\n{e}")
 
-# ======================
-# POKAZ DANE
-# ======================
+# SORTOWANIE TABELI
+
+
+def sortuj_kolumne(col, reverse):
+
+    dane = get_dane()
+
+    if dane is None:
+        return
+
+    try:
+        dane = dane.sort_values(by=col, ascending=not reverse)
+    except:
+        dane = dane.sort_values(by=col, ascending=not reverse, key=lambda x: x.astype(str))
+
+    pokaz(dane)
+
+    tabela.heading(
+        col,
+        command=lambda: sortuj_kolumne(col, not reverse)
+    )
+
+# WYŚWIETLANIE TABELI DANYCH
+
 def pokaz(dane):
 
     tabela.delete(*tabela.get_children())
@@ -71,15 +98,18 @@ def pokaz(dane):
     tabela["show"] = "headings"
 
     for col in dane.columns:
-        tabela.heading(col, text=col)
+        tabela.heading(
+            col,
+            text=col,
+            command=lambda c=col: sortuj_kolumne(c, False)
+        )
         tabela.column(col, anchor="center", width=100, stretch=False)
 
     for _, row in dane.iterrows():
         tabela.insert("", "end", values=list(row))
 
-# ======================
-# FILTRUJ
-# ======================
+#FILTROWANIE DANYCH
+
 def filtruj_dane():
 
     if df is None:
@@ -137,10 +167,30 @@ def filtruj_dane():
     pokaz(dane)
     pokaz_statystyki(dane)
 
+# WYSZUKIWANIE PACJENTA
 
-# ======================
-# WYKRES BMI
-# ======================
+def wyszukaj():
+
+    dane = get_dane()
+
+    if dane is None:
+        return
+
+    tekst = search_entry.get().lower()
+
+    if tekst == "":
+        pokaz(dane)
+        return
+
+    wynik = dane[
+        dane.astype(str)
+        .apply(lambda row: row.str.lower().str.contains(tekst).any(), axis=1)
+    ]
+
+    pokaz(wynik)
+
+#GENEROWNAIE WYKRESÓW
+
 def wykres_bmi():
     global df, canvas
     dane = get_dane()
@@ -193,7 +243,7 @@ def wykres_bmi():
     current_title = "Rozkład BMI według płci"
 
 
-#=====
+
 #nadcisnienie
 
 def wykres_nadcisnienie_kolowy():
@@ -238,7 +288,7 @@ def wykres_nadcisnienie_kolowy():
     current_title = "Procent pacjentów z nadciśnieniem"
 
 
-#=========
+
 #wykres cykrzyca podział na typ 1 i 2 oraz brak
 
 def wykres_cukrzyca_typ_kolowy():
@@ -255,7 +305,7 @@ def wykres_cukrzyca_typ_kolowy():
     if canvas is not None:
         canvas.get_tk_widget().destroy()
 
-    # liczby
+# liczby
     brak = len(dane[dane["cukrzyca"] == "nie"])
     typ1 = len(dane[dane["typ_cukrzycy"] == "typ 1"])
     typ2 = len(dane[dane["typ_cukrzycy"] == "typ 2"])
@@ -283,7 +333,7 @@ def wykres_cukrzyca_typ_kolowy():
     current_title = "Cukrzyca w populacji"
 
 
-#======
+
 # wykres słupkowy lekow na cukrzyce
 
 def wykres_leki_cukrzyca():
@@ -300,10 +350,10 @@ def wykres_leki_cukrzyca():
     if canvas is not None:
         canvas.get_tk_widget().destroy()
 
-    # tylko osoby z cukrzycą
+# tylko osoby z cukrzycą
     dane_cukrzyca = dane[dane["cukrzyca"] == "tak"].copy()
 
-    # brak leków jeśli puste
+# brak leków jeśli puste
     dane_cukrzyca["leki_na_cukrzyce"] = (
         dane_cukrzyca["leki_na_cukrzyce"]
         .fillna("brak leków")
@@ -335,8 +385,8 @@ def wykres_leki_cukrzyca():
 
 
 
-#======
-#statystyka
+#OBLICZANIE STATYSTYK
+
 def pokaz_statystyki(dane):
 
     global stat_label
@@ -348,6 +398,7 @@ def pokaz_statystyki(dane):
         return
 
     liczba = len(dane)
+    liczba_all = len(df) if df is not None else liczba
 
     sredni_wiek = round(dane["wiek"].mean(), 1) if "wiek" in dane.columns else "-"
     sredni_bmi = round(dane["BMI"].mean(), 1) if "BMI" in dane.columns else "-"
@@ -358,7 +409,7 @@ def pokaz_statystyki(dane):
         cuk_proc = "-"
 
     tekst = (
-        f"Pacjenci: {liczba}   |   "
+        f"Pacjenci: {liczba}/{liczba_all}   |   "
         f"Średni wiek: {sredni_wiek}   |   "
         f"Średni BMI: {sredni_bmi}   |   "
         f"Cukrzyca: {cuk_proc}%"
@@ -366,8 +417,9 @@ def pokaz_statystyki(dane):
 
     stat_label.config(
         text=tekst)
-#========
-#PDF
+
+# EKSPORT DANYCH
+
 def eksport_pdf():
 
     global current_fig, current_data, current_title
@@ -404,7 +456,7 @@ def eksport_pdf():
 
     elements = []
 
-    # ===== TYTUŁ =====
+
     elements.append(
         Paragraph(
             f"Statystyka T-studenta <b>{current_title}</b>",
@@ -413,7 +465,7 @@ def eksport_pdf():
     )
     elements.append(Spacer(1, 12))
 
-    # ===== DATA =====
+
     elements.append(
         Paragraph(
             f"Data raportu: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
@@ -440,7 +492,6 @@ def eksport_pdf():
     doc.build(elements)
 
     messagebox.showinfo("Sukces", f"Zapisano PDF:\n{path}")
-#=========
 #eksport danych do csv
 
 def eksport_csv():
@@ -468,8 +519,7 @@ def eksport_csv():
     )
 
 
-#========
-#t studenta
+#ANALIZA STATYSTYCZNA(T-STUDENTA)
 
 def okno_ttest():
 
@@ -484,7 +534,7 @@ def okno_ttest():
     win.title("Test t-Studenta")
     win.geometry("900x650")
 
-    # ===== GÓRA =====
+
     top = ttk.Frame(win)
     top.pack(fill="x", pady=5)
 
@@ -506,7 +556,7 @@ def okno_ttest():
 
     ttk.Button(top, text="Uruchom", command=lambda: rysuj()).pack(side="left", padx=5)
 
-    # ===== ŚRODEK =====
+
     plot_frame = ttk.Frame(win)
     plot_frame.pack(fill="both", expand=True)
 
@@ -518,7 +568,6 @@ def okno_ttest():
     )
     wynik_label.pack(pady=5)
 
-    # ===== DÓŁ =====
     bottom = ttk.Frame(win)
     bottom.pack(fill="x", pady=10)
 
@@ -562,7 +611,7 @@ def okno_ttest():
             wynik_label.config(text="Za mało danych")
             return
 
-        # ===== TEST =====
+
         t, p = ttest_ind(g1, g2, equal_var=False)
 
         tekst = (
@@ -573,7 +622,7 @@ def okno_ttest():
 
         wynik_label.config(text=tekst)
 
-        # ===== WYKRES =====
+# ===== WYKRES =====
         fig = Figure(figsize=(6, 4))
         ax = fig.add_subplot(111)
 
@@ -591,7 +640,7 @@ def okno_ttest():
         current_data = dane
         current_title = typ
 
-    # ===== PRZYCISKI =====
+ # ===== PRZYCISKI =====
 
     ttk.Button(
         bottom,
@@ -610,6 +659,7 @@ def okno_ttest():
     rysuj()
 
 #zamknij wykres
+
 def zamknij_wykres():
     global canvas, current_fig
 
@@ -633,7 +683,7 @@ def okno_wykresy():
     win.title("Wykresy")
     win.geometry("900x600")
 
-    # ===== GÓRA =====
+
     top = ttk.Frame(win)
     top.pack(fill="x", pady=5)
 
@@ -655,11 +705,11 @@ def okno_wykresy():
 
     ttk.Button(top, text="Pokaż", command=lambda: rysuj()).pack(side="left", padx=5)
 
-    # ===== ŚRODEK =====
+
     plot_frame = ttk.Frame(win)
     plot_frame.pack(fill="both", expand=True)
 
-    # ===== DÓŁ =====
+
     bottom = ttk.Frame(win)
     bottom.pack(fill="x", pady=10)
 
@@ -756,9 +806,8 @@ def rysuj_wykres():
     canvas.draw()
     canvas.get_tk_widget().pack(fill="both", expand=True)
 
-# ======================
-# GUI
-# ======================
+# INTERFEJS GRAFICZNY APLIKACJI (GUI)
+
 okno = tk.Window(themename="flatly")
 okno.title("Analiza pacjentów")
 
@@ -769,7 +818,7 @@ style = ttk.Style()
 style.configure("Treeview", rowheight=28, font=("Segoe UI", 10))
 style.configure("Treeview.Heading", font=("Segoe UI", 10, "bold"))
 
-#===statystyka
+#PANEL STATYSTYK (GÓRNY PASEK)
 stat_label = ttk.Label(
     okno,
     text="Brak danych",
@@ -778,10 +827,13 @@ stat_label = ttk.Label(
 )
 
 stat_label.pack(fill="x", padx=10, pady=5)
+
+#ZAKŁADKI APLIKACJI
+
 notebook = ttk.Notebook(okno)
 notebook.pack(fill="both", expand=True)
 
-#zakladki
+
 tab_dane = ttk.Frame(notebook, padding=10)
 tab_wykresy = ttk.Frame(notebook, padding=10)
 tab_stat = ttk.Frame(notebook, padding=10)
@@ -800,9 +852,21 @@ var_cuk_nie = tk.BooleanVar(value=True)
 var_nad_tak = tk.BooleanVar(value=True)
 var_nad_nie = tk.BooleanVar(value=True)
 
-# ===== LEWA STRONA =====
+# PANEL OPERACJI NA DANYCH
+
 toolbar = ttk.Frame(tab_dane)
 toolbar.pack(fill="x", pady=5)
+
+ttk.Label(toolbar, text="Szukaj:").pack(side="left", padx=5)
+
+search_entry = ttk.Entry(toolbar, width=20)
+search_entry.pack(side="left")
+
+ttk.Button(
+    toolbar,
+    text="Szukaj",
+    command=wyszukaj
+).pack(side="left", padx=5)
 
 ttk.Button(
     toolbar,
@@ -828,6 +892,8 @@ ttk.Button(
     command=eksport_pdf
 ).pack(side="left", padx=5)
 
+#PANEL FILTRÓW DANYCH
+
 ramka_filtry = ttk.LabelFrame(
     tab_dane,
     text="Filtry danych",
@@ -837,11 +903,12 @@ ramka_filtry.pack(fill="x", padx=10, pady=10)
 ramka_filtry.columnconfigure(0, weight=1)
 ramka_filtry.columnconfigure(1, weight=1)
 
+#TABELA DANYCH PACJENTÓW
+
 ramka_tabela = ttk.Frame(tab_dane)
 ramka_tabela.pack(fill="both", expand=True)
 ramka_tabela.pack_propagate(False)
 
-# ramka dla tabeli i scrolli
 ramka_tree = ttk.Frame(ramka_tabela)
 ramka_tree.pack(fill="both", expand=True)
 
@@ -858,7 +925,8 @@ scroll_x.pack(side="bottom", fill="x")
 tabela.pack(fill="both", expand=True)
 
 
-# ===== MENU WYKRESÓW =====
+# PANEL WYKRESÓW
+
 ttk.Label(tab_wykresy, text="Wybierz wykres", font=("Arial", 12)).pack(pady=10)
 
 wybor_wykres = ttk.Combobox(
@@ -883,7 +951,9 @@ ttk.Button(
 
 plot_frame = ttk.Frame(tab_wykresy)
 plot_frame.pack(fill="both", expand=True)
-#statystyka
+
+#PANEL ANALIZY STATYSTCZNEJ
+
 ttk.Button(
     tab_stat,
     text="Uruchom test t-Studenta",
@@ -951,5 +1021,5 @@ btn_reset = ttk.Button(
 btn_reset.pack(side="left", expand=True, fill="x", padx=3)
 
 
-# ===== START =====
+# START APLIKACJI
 okno.mainloop()
