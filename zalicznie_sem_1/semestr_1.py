@@ -13,7 +13,6 @@ from reportlab.lib.styles import getSampleStyleSheet
 
 import pandas as pd
 import ttkbootstrap as tk
-import tkinter as tk2
 
 df = None
 canvas = None
@@ -23,6 +22,8 @@ df_filtered = None
 current_fig = None
 current_data = None
 current_title = ""
+def get_dane():
+    return df_filtered if df_filtered is not None else df
 
 # ======================
 # WCZYTYWANIE CSV
@@ -36,7 +37,7 @@ def wczytaj_dane():
         return
 
     try:
-        df = pd.read_csv(path)
+        df = pd.read_csv(path, sep=None, engine="python")
      # ===== oblicz BMI jeśli są dane =====
         if "waga" in df.columns and "wzrost" in df.columns:
             df["BMI"] = df["waga"] / (df["wzrost"] / 100) ** 2
@@ -80,7 +81,6 @@ def pokaz(dane):
 # FILTRUJ
 # ======================
 def filtruj_dane():
-    global df
 
     if df is None:
         messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
@@ -143,8 +143,8 @@ def filtruj_dane():
 # ======================
 def wykres_bmi():
     global df, canvas
-    dane = df_filtered if df_filtered is not None else df
-    if df is None:
+    dane = get_dane()
+    if dane is None:
         messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
         return
 
@@ -152,7 +152,7 @@ def wykres_bmi():
         messagebox.showwarning("Błąd", "Brak kolumn BMI lub plec")
         return
 
-    if canvas:
+    if canvas is not None:
         canvas.get_tk_widget().destroy()
 
     kobiety = dane[dane["plec"] == "K"]["BMI"]
@@ -198,7 +198,7 @@ def wykres_bmi():
 
 def wykres_nadcisnienie_kolowy():
     global df, canvas
-    dane = df_filtered if df_filtered is not None else df
+    dane = get_dane()
     if dane is None:
         messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
         return
@@ -207,7 +207,7 @@ def wykres_nadcisnienie_kolowy():
         messagebox.showwarning("Błąd", "Brak danych o nadciśnieniu")
         return
 
-    if canvas:
+    if canvas is not None:
         canvas.get_tk_widget().destroy()
 
     counts = dane["nadcisnienie"].value_counts()
@@ -243,16 +243,16 @@ def wykres_nadcisnienie_kolowy():
 
 def wykres_cukrzyca_typ_kolowy():
     global df, canvas
-    dane = df_filtered if df_filtered is not None else df
-    if df is None:
+    dane = get_dane()
+    if dane is None:
         messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
         return
 
-    if "cukrzyca" not in df.columns or "typ_cukrzycy" not in df.columns:
+    if "cukrzyca" not in dane.columns or "typ_cukrzycy" not in dane.columns:
         messagebox.showwarning("Błąd", "Brak danych o cukrzycy")
         return
 
-    if canvas:
+    if canvas is not None:
         canvas.get_tk_widget().destroy()
 
     # liczby
@@ -288,16 +288,16 @@ def wykres_cukrzyca_typ_kolowy():
 
 def wykres_leki_cukrzyca():
     global df, canvas
-    dane = df_filtered if df_filtered is not None else df
-    if df is None:
+    dane = get_dane()
+    if dane is None:
         messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
         return
 
-    if "leki_na_cukrzyce" not in df.columns or "cukrzyca" not in df.columns:
+    if "leki_na_cukrzyce" not in dane.columns or "cukrzyca" not in dane.columns:
         messagebox.showwarning("Błąd", "Brak danych o cukrzycy lub lekach")
         return
 
-    if canvas:
+    if canvas is not None:
         canvas.get_tk_widget().destroy()
 
     # tylko osoby z cukrzycą
@@ -390,13 +390,17 @@ def eksport_pdf():
     current_fig.savefig(img_buffer, format="png", dpi=300, bbox_inches="tight")
     img_buffer.seek(0)
 
-    pdfmetrics.registerFont(TTFont("Arial", "arial.ttf"))
-
     doc = SimpleDocTemplate(path, pagesize=A4)
     styles = getSampleStyleSheet()
 
+    try:
+        pdfmetrics.registerFont(TTFont("Arial", "arial.ttf"))
+        font = "Arial"
+    except:
+        font = "Helvetica"
+
     for style in styles.byName.values():
-        style.fontName = "Arial"
+        style.fontName = font
 
     elements = []
 
@@ -470,7 +474,7 @@ def eksport_csv():
 def okno_ttest():
 
     global df, df_filtered, current_fig, current_data, current_title
-    dane = df_filtered if df_filtered is not None else df
+    dane = get_dane()
 
     if dane is None:
         messagebox.showwarning("Brak danych", "Najpierw wczytaj dane")
@@ -592,7 +596,6 @@ def okno_ttest():
     ttk.Button(
         bottom,
         text="Eksport PDF",
-        bootstyle="success",
         width=15,
         command=eksport_pdf
     ).pack(side="right", padx=10)
@@ -600,7 +603,6 @@ def okno_ttest():
     ttk.Button(
         bottom,
         text="Zamknij",
-        bootstyle="danger",
         width=15,
         command=win.destroy
     ).pack(side="right", padx=10)
@@ -689,7 +691,6 @@ def okno_wykresy():
     ttk.Button(
         bottom,
         text="Eksport PDF",
-        bootstyle="success",
         width=15,
         command=eksport_pdf
     ).pack(side="right", padx=10)
@@ -697,7 +698,6 @@ def okno_wykresy():
     ttk.Button(
         bottom,
         text="Zamknij",
-        bootstyle="danger",
         width=15,
         command=win.destroy
     ).pack(side="right", padx=10)
@@ -726,6 +726,35 @@ def reset_filtry():
         pokaz(df)
         pokaz_statystyki(df)
 
+#rysowanie wykresu
+def rysuj_wykres():
+
+    global canvas
+
+    if canvas:
+        canvas.get_tk_widget().destroy()
+
+    typ = wybor_wykres.get()
+
+    if typ == "BMI":
+        wykres_bmi()
+
+    elif typ == "Nadciśnienie %":
+        wykres_nadcisnienie_kolowy()
+
+    elif typ == "Cukrzyca typy %":
+        wykres_cukrzyca_typ_kolowy()
+
+    elif typ == "Leki na cukrzycę":
+        wykres_leki_cukrzyca()
+
+    if current_fig is None:
+        return
+
+    canvas = FigureCanvasTkAgg(current_fig, master=plot_frame)
+
+    canvas.draw()
+    canvas.get_tk_widget().pack(fill="both", expand=True)
 
 # ======================
 # GUI
@@ -749,8 +778,30 @@ stat_label = ttk.Label(
 )
 
 stat_label.pack(fill="x", padx=10, pady=5)
-main_frame = ttk.Frame(okno)
-main_frame.pack(fill="both", expand=True)
+notebook = ttk.Notebook(okno)
+notebook.pack(fill="both", expand=True)
+
+#zakladki
+tab_dane = ttk.Frame(notebook, padding=10)
+
+notebook_dane = ttk.Notebook(tab_dane)
+notebook_dane.pack(fill="both", expand=True)
+
+tab_tabela = ttk.Frame(notebook_dane)
+tab_filtry = ttk.Frame(notebook_dane)
+
+notebook_dane.add(tab_tabela, text="Tabela")
+notebook_dane.add(tab_filtry, text="Filtry")
+
+tab_wykresy = ttk.Frame(notebook, padding=10)
+tab_stat = ttk.Frame(notebook, padding=10)
+
+
+notebook.add(tab_dane, text="Dane")
+notebook.add(tab_wykresy, text="Wykresy")
+notebook.add(tab_stat, text="Statystyka")
+
+
 
 # ===== ZMIENNE =====
 var_k = tk.BooleanVar(value=True)
@@ -761,11 +812,38 @@ var_nad_tak = tk.BooleanVar(value=True)
 var_nad_nie = tk.BooleanVar(value=True)
 
 # ===== LEWA STRONA =====
-ramka_tabela = ttk.Frame(main_frame, width=850)
-ramka_tabela.pack(side="left", fill="both")
+toolbar = ttk.Frame(tab_tabela)
+toolbar.pack(fill="x", pady=5)
+
+ttk.Button(
+    toolbar,
+    text="Wczytaj bazę",
+    command=wczytaj_dane
+).pack(side="left", padx=5)
+
+ttk.Button(
+    toolbar,
+    text="Wczytaj nową bazę",
+    command=wczytaj_dane
+).pack(side="left", padx=5)
+
+ttk.Button(
+    toolbar,
+    text="Eksport CSV",
+    command=eksport_csv
+).pack(side="left", padx=5)
+
+ttk.Button(
+    toolbar,
+    text="Eksport PDF",
+    command=eksport_pdf
+).pack(side="left", padx=5)
+
+ramka_tabela = ttk.Frame(tab_tabela)
+ramka_tabela.pack(fill="both", expand=True)
 ramka_tabela.pack_propagate(False)
 
-ramka_przyciski = ttk.Frame(main_frame, width=260)
+ramka_przyciski = ttk.Frame(tab_filtry)
 ramka_przyciski.pack(side="right", fill="y", padx=10, pady=10)
 ramka_przyciski.pack_propagate(False)
 
@@ -788,38 +866,44 @@ tabela.pack(fill="both", expand=True)
 # ===== PRAWA STRONA =====
 ttk.Label(ramka_przyciski, text="Panel sterowania", font=("Arial", 10, "bold")).pack(pady=5)
 
-#wczytak dane
-ttk.Button(
-    ramka_przyciski,
-    text="Wczytaj CSV",
-    width=22,
-    bootstyle="primary",
-    command=wczytaj_dane
-).pack(pady=4)
 
 
 # ===== MENU WYKRESÓW =====
-ttk.Button(
-    ramka_przyciski,
-    text="Wykresy",
-    width=22,
-    bootstyle="info",
-    command=okno_wykresy
-).pack(pady=4)
+ttk.Label(tab_wykresy, text="Wybierz wykres", font=("Arial", 12)).pack(pady=10)
 
+wybor_wykres = ttk.Combobox(
+    tab_wykresy,
+    values=[
+        "BMI",
+        "Nadciśnienie %",
+        "Cukrzyca typy %",
+        "Leki na cukrzycę"
+    ],
+    state="readonly"
+)
+
+wybor_wykres.pack(pady=5)
+wybor_wykres.current(0)
+
+ttk.Button(
+    tab_wykresy,
+    text="Pokaż wykres",
+    command=rysuj_wykres
+).pack(pady=5)
+
+plot_frame = ttk.Frame(tab_wykresy)
+plot_frame.pack(fill="both", expand=True)
 #statystyka
 ttk.Button(
-    ramka_przyciski,
-    text="Statystyka t-Studenta",
-    width=22,
-    bootstyle="warning",
+    tab_stat,
+    text="Uruchom test t-Studenta",
     command=okno_ttest
-).pack(pady=4)
+).pack(pady=20)
 
 # ===== RAMKA FILTRÓW =====
 ramka_filtry = ttk.LabelFrame(
     ramka_przyciski,
-    text="Filtry pacjentów",
+    text="Filtry danych",
     padding=10
 )
 ramka_filtry.pack(pady=8, fill="x")
@@ -867,10 +951,24 @@ ttk.Checkbutton(sekcja_nad, text="Nie", variable=var_nad_nie).pack(anchor="w")
 frame_btn = ttk.Frame(ramka_filtry)
 frame_btn.pack(fill="x", pady=8)
 
+frame_export = ttk.Frame(ramka_filtry)
+frame_export.pack(fill="x", pady=5)
+
+ttk.Button(
+    frame_export,
+    text="Eksport CSV",
+    command=eksport_csv
+).pack(side="left", expand=True, fill="x", padx=3)
+
+ttk.Button(
+    frame_export,
+    text="Eksport PDF",
+    command=eksport_pdf
+).pack(side="left", expand=True, fill="x", padx=3)
+
 btn_filtruj = ttk.Button(
     frame_btn,
     text="Filtruj",
-    bootstyle="success",
     command=filtruj_dane
 )
 
@@ -879,7 +977,6 @@ btn_filtruj.pack(side="left", expand=True, fill="x", padx=3)
 btn_reset = ttk.Button(
     frame_btn,
     text="Reset",
-    bootstyle="secondary",
     command=reset_filtry
 )
 
@@ -888,7 +985,6 @@ ttk.Button(
     ramka_przyciski,
     text="Eksport danych",
     width=22,
-    bootstyle="success",
     command=eksport_csv
 ).pack(pady=4)
 
