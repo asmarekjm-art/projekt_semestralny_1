@@ -265,8 +265,6 @@ notebook_wykresy.add(tab_cuk, text="Cukrzyca")
 notebook_wykresy.add(tab_leki, text="Leki")
 
 
-# FUNKCJA ZMIANY WYKRESU
-
 def zmien_wykres(event):
     pass
 
@@ -302,6 +300,55 @@ wybor_test = ttk.Combobox(
 wybor_test.pack(side="left", padx=5)
 wybor_test.current(0)
 
+plot_stat = ttk.Frame(tab_stat)
+plot_stat.pack(fill="both", expand=True, padx=10, pady=10)
+
+wynik_stat = ttk.Label(
+    tab_stat,
+    text="",
+    font=("Arial", 10),
+    justify="left"
+)
+
+wynik_stat.pack(pady=5)
+
+
+opis_stat = ttk.Label(
+    tab_stat,
+    text=(
+        "Statystyka opisowa:\n"
+        "count – liczba obserwacji\n"
+        "mean – średnia wartość\n"
+        "std – odchylenie standardowe\n"
+        "min – najmniejsza wartość\n"
+        "25% – pierwszy kwartyl\n"
+        "50% – mediana\n"
+        "75% – trzeci kwartyl\n"
+        "max – największa wartość"
+    ),
+    justify="left",
+    font=("Arial", 9)
+)
+
+opis_stat.pack(padx=10, pady=5, anchor="w")
+
+
+opis_wierszy = ttk.Label(
+    tab_stat,
+    text=(
+        "Wiersze tabeli oznaczają analizowane zmienne:\n"
+        "wiek – wiek pacjentów\n"
+        "waga – masa ciała pacjentów\n"
+        "wzrost – wzrost pacjentów\n"
+        "BMI – wskaźnik masy ciała"
+    ),
+    justify="left",
+    font=("Arial", 9)
+)
+
+opis_wierszy.pack(padx=10, pady=5, anchor="w")
+
+
 ttk.Button(
     top_stat,
     text="Uruchom test",
@@ -311,50 +358,6 @@ ttk.Button(
         wybor_test
     )
 ).pack(side="left", padx=10)
-
-plot_stat = ttk.Frame(tab_stat)
-plot_stat.pack(fill="both", expand=True)
-
-wynik_stat = ttk.Label(
-    tab_stat,
-    text="",
-    font=("Arial", 10),
-    justify="left"
-)
-
-opis_stat = ttk.Label(
-    tab_stat,
-    text=
-    "Statystyka opisowa:\n"
-    "count – liczba obserwacji (pacjentów)\n"
-    "mean – średnia wartość\n"
-    "std – odchylenie standardowe (zmienność danych)\n"
-    "min – najmniejsza wartość\n"
-    "25% – pierwszy kwartyl (25% danych poniżej tej wartości)\n"
-    "50% – mediana (środkowa wartość)\n"
-    "75% – trzeci kwartyl (75% danych poniżej tej wartości)\n"
-    "max – największa wartość",
-    justify="left",
-    font=("Arial", 9)
-)
-
-opis_stat.pack(padx=10, pady=5, anchor="w")
-
-opis_wierszy = ttk.Label(
-    tab_stat,
-    text=
-    "Wiersze tabeli oznaczają analizowane zmienne:\n"
-    "wiek – wiek pacjentów\n"
-    "waga – masa ciała pacjentów [kg]\n"
-    "wzrost – wzrost pacjentów [cm]\n"
-    "BMI – wskaźnik masy ciała obliczony z wagi i wzrostu",
-    justify="left",
-    font=("Arial",9)
-)
-
-opis_wierszy.pack(padx=10, pady=5, anchor="w")
-
-wynik_stat.pack(pady=10)
 
 
 # =================

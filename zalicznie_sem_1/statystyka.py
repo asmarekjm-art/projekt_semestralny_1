@@ -30,6 +30,18 @@ def statystyki_opisowe(pokaz):
 
     opis = num.describe().T
 
+    # ZMIANA NAZW KOLUMN NA POLSKIE
+    opis = opis.rename(columns={
+        "count": "Liczba obserwacji",
+        "mean": "Średnia",
+        "std": "Odchylenie std",
+        "min": "Minimum",
+        "25%": "1 kwartyl",
+        "50%": "Mediana",
+        "75%": "3 kwartyl",
+        "max": "Maximum"
+    })
+
     pokaz(opis.round(2))
 
 
