@@ -17,15 +17,15 @@ df_filtered = None
 
 
 # =================
-# LOG
+# LOG (nadpisywany z gui)
 # =================
 
-def log(msg):
-    print(msg)
+def log(msg, level="INFO"):
+    print(f"[{level}] {msg}")
 
 
 # =================
-# POBRANIE DANYCH
+# POBIERANIE DANYCH
 # =================
 
 def get_dane():
@@ -34,7 +34,7 @@ def get_dane():
 
 
 # =================
-# OBLICZANIE NADCIŚNIENIA
+# ANALIZA CIŚNIENIA
 # =================
 
 def nadcisnienie(val):
@@ -43,8 +43,15 @@ def nadcisnienie(val):
         return "nie"
 
     try:
-        s, d = map(int, val.split("/"))
-        return "tak" if s >= 140 or d >= 90 else "nie"
+
+        s, d = val.split("/")
+        s = int(s)
+        d = int(d)
+
+        if s >= 140 or d >= 90:
+            return "tak"
+
+        return "nie"
 
     except Exception:
         return "nie"
@@ -72,13 +79,29 @@ def wczytaj_dane(pokaz, pokaz_statystyki):
 
     try:
 
-        df = pd.read_csv(path, sep=None, engine="python")
+        df = pd.read_csv(
+            path,
+            sep=None,
+            engine="python"
+        )
 
         df_filtered = None
 
-        log(f"Wczytano {df.shape[0]} wierszy")
-        log(f"Liczba kolumn: {df.shape[1]}")
+        log(f"Wczytano {len(df)} rekordów")
         log(f"Kolumny: {list(df.columns)}")
+
+        # =================
+        # KONWERSJA LICZB
+        # =================
+
+        for col in ["wiek", "waga", "wzrost"]:
+
+            if col in df.columns:
+
+                df[col] = pd.to_numeric(
+                    df[col],
+                    errors="coerce"
+                )
 
         # =================
         # BMI
@@ -99,7 +122,7 @@ def wczytaj_dane(pokaz, pokaz_statystyki):
 
         else:
 
-            log("Brak kolumn waga/wzrost – BMI nie obliczono")
+            log("Brak kolumn waga/wzrost — BMI pominięte")
 
         # =================
         # NADCIŚNIENIE
@@ -109,9 +132,7 @@ def wczytaj_dane(pokaz, pokaz_statystyki):
 
             log("Analiza nadciśnienia")
 
-            df["nadcisnienie"] = df["cisnienie"].apply(
-                nadcisnienie
-            )
+            df["nadcisnienie"] = df["cisnienie"].apply(nadcisnienie)
 
             log("Kolumna nadcisnienie została dodana")
 
@@ -126,8 +147,8 @@ def wczytaj_dane(pokaz, pokaz_statystyki):
 
     except Exception as e:
 
-        log("Błąd wczytywania danych")
-        log(str(e))
+        log("Błąd wczytywania danych", "ERROR")
+        log(str(e), "ERROR")
 
 
 # =================
@@ -141,7 +162,6 @@ def sortuj_kolumne(col, reverse, pokaz):
     dane = get_dane()
 
     if dane is None or dane.empty:
-
         log("Sortowanie przerwane – brak danych")
         return
 
@@ -191,11 +211,10 @@ def filtruj_dane(
     global df_filtered
 
     if df.empty:
-
-        log("Filtrowanie przerwane – brak wczytanych danych")
+        log("Filtrowanie przerwane – brak danych")
         return
 
-    log("Rozpoczęcie filtrowania danych")
+    log("Rozpoczęcie filtrowania")
 
     dane = df.copy()
 
@@ -221,26 +240,25 @@ def filtruj_dane(
     # FILTR WIEKU
     # =================
 
-    try:
+    if "wiek" in dane.columns:
 
-        if "wiek" in dane.columns:
+        try:
 
-            if entry_min.get():
+            min_wiek = entry_min.get().strip()
+            max_wiek = entry_max.get().strip()
 
-                dane = dane[dane["wiek"] >= int(entry_min.get())]
+            if min_wiek:
+                dane = dane[dane["wiek"] >= int(min_wiek)]
+                log(f"Wiek od: {min_wiek}")
 
-                log(f"Wiek od: {entry_min.get()}")
+            if max_wiek:
+                dane = dane[dane["wiek"] <= int(max_wiek)]
+                log(f"Wiek do: {max_wiek}")
 
-            if entry_max.get():
+        except ValueError:
 
-                dane = dane[dane["wiek"] <= int(entry_max.get())]
-
-                log(f"Wiek do: {entry_max.get()}")
-
-    except ValueError:
-
-        log("Błąd – wiek musi być liczbą")
-        return
+            log("Błąd – wiek musi być liczbą", "ERROR")
+            return
 
     # =================
     # FILTR CUKRZYCY
@@ -295,23 +313,19 @@ def wyszukaj(search_entry, pokaz):
     dane = get_dane()
 
     if dane is None or dane.empty:
-
         log("Wyszukiwanie przerwane – brak danych")
         return
 
     tekst = search_entry.get().strip().lower()
 
-    log(f"Wyszukiwanie: {tekst}")
-
     if not tekst:
-
         pokaz(dane)
         return
 
-    mask = dane.apply(
-        lambda col: col.astype(str)
-        .str.lower()
-        .str.contains(tekst, na=False)
+    log(f"Wyszukiwanie: {tekst}")
+
+    mask = dane.astype(str).apply(
+        lambda col: col.str.lower().str.contains(tekst, na=False)
     ).any(axis=1)
 
     wynik = dane[mask]
@@ -358,5 +372,3 @@ def reset_filtry(
         pokaz_stat(df)
 
         log("Przywrócono pełny zbiór danych")
-
-    log("Filtry zostały zresetowane")

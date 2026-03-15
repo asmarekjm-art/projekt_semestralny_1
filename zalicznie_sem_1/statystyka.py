@@ -13,7 +13,8 @@ from dane import get_dane
 # LOG (nadpisywany z gui)
 # =================
 
-log = print
+def log(msg, level="INFO"):
+    print(f"[{level}] {msg}")
 
 
 # =================
@@ -24,19 +25,19 @@ def statystyki_opisowe(pokaz):
 
     dane = get_dane()
 
-    if dane is None:
-        log("Statystyki opisowe przerwane – brak danych")
+    if dane is None or dane.empty:
+        log("Statystyki opisowe przerwane – brak danych", "ERROR")
         return
 
     num = dane.select_dtypes(include="number")
 
     if num.empty:
-        log("Brak danych liczbowych do statystyk")
+        log("Brak danych liczbowych do statystyk", "ERROR")
         return
 
     opis = num.describe().T
 
-    # podpisy wierszy
+    # nazwy wierszy
     opis = opis.rename(index={
         "wiek": "Wiek pacjentów [lata]",
         "waga": "Masa ciała [kg]",
@@ -44,7 +45,7 @@ def statystyki_opisowe(pokaz):
         "BMI": "BMI (Body Mass Index)"
     })
 
-    # podpisy kolumn
+    # nazwy kolumn
     opis = opis.rename(columns={
         "count": "Liczba obserwacji",
         "mean": "Średnia",
@@ -67,7 +68,7 @@ def statystyki_opisowe(pokaz):
 
 def pokaz_statystyki(dane, stat_label):
 
-    if dane is None or len(dane) == 0:
+    if dane is None or dane.empty:
         stat_label.config(text="Brak danych")
         return
 
@@ -102,36 +103,51 @@ def pokaz_statystyki(dane, stat_label):
 
 
 # =================
-# WYBÓR GRUP DO TESTU
+# PRZYGOTOWANIE GRUP
 # =================
 
 def przygotuj_grupy(dane, typ):
 
-    if typ == "BMI — Płeć":
-        g1 = dane[dane["plec"] == "K"]["BMI"].dropna()
-        g2 = dane[dane["plec"] == "M"]["BMI"].dropna()
-        nazwa1, nazwa2 = "Kobiety", "Mężczyźni"
-        ylabel = "BMI"
+    try:
 
-    elif typ == "BMI — Cukrzyca":
-        g1 = dane[dane["cukrzyca"] == "tak"]["BMI"].dropna()
-        g2 = dane[dane["cukrzyca"] == "nie"]["BMI"].dropna()
-        nazwa1, nazwa2 = "Cukrzyca", "Brak"
-        ylabel = "BMI"
+        if typ == "BMI — Płeć":
 
-    elif typ == "BMI — Nadciśnienie":
-        g1 = dane[dane["nadcisnienie"] == "tak"]["BMI"].dropna()
-        g2 = dane[dane["nadcisnienie"] == "nie"]["BMI"].dropna()
-        nazwa1, nazwa2 = "Nadciśnienie", "Brak"
-        ylabel = "BMI"
+            g1 = dane[dane["plec"] == "K"]["BMI"].dropna()
+            g2 = dane[dane["plec"] == "M"]["BMI"].dropna()
 
-    elif typ == "Wiek — Płeć":
-        g1 = dane[dane["plec"] == "K"]["wiek"].dropna()
-        g2 = dane[dane["plec"] == "M"]["wiek"].dropna()
-        nazwa1, nazwa2 = "Kobiety", "Mężczyźni"
-        ylabel = "Wiek"
+            nazwa1, nazwa2 = "Kobiety", "Mężczyźni"
+            ylabel = "BMI"
 
-    else:
+        elif typ == "BMI — Cukrzyca":
+
+            g1 = dane[dane["cukrzyca"] == "tak"]["BMI"].dropna()
+            g2 = dane[dane["cukrzyca"] == "nie"]["BMI"].dropna()
+
+            nazwa1, nazwa2 = "Cukrzyca", "Brak"
+            ylabel = "BMI"
+
+        elif typ == "BMI — Nadciśnienie":
+
+            g1 = dane[dane["nadcisnienie"] == "tak"]["BMI"].dropna()
+            g2 = dane[dane["nadcisnienie"] == "nie"]["BMI"].dropna()
+
+            nazwa1, nazwa2 = "Nadciśnienie", "Brak"
+            ylabel = "BMI"
+
+        elif typ == "Wiek — Płeć":
+
+            g1 = dane[dane["plec"] == "K"]["wiek"].dropna()
+            g2 = dane[dane["plec"] == "M"]["wiek"].dropna()
+
+            nazwa1, nazwa2 = "Kobiety", "Mężczyźni"
+            ylabel = "Wiek"
+
+        else:
+            return None
+
+    except KeyError:
+
+        log("Brak wymaganych kolumn do testu statystycznego", "ERROR")
         return None
 
     return g1, g2, nazwa1, nazwa2, ylabel
@@ -145,10 +161,11 @@ def rysuj_test(plot_stat, wynik_stat, wybor_test):
 
     dane = get_dane()
 
-    if dane is None:
-        log("Test statystyczny przerwany – brak danych")
+    if dane is None or dane.empty:
+        log("Test statystyczny przerwany – brak danych", "ERROR")
         return
 
+    # czyszczenie starego wykresu
     for widget in plot_stat.winfo_children():
         widget.destroy()
 
@@ -157,13 +174,15 @@ def rysuj_test(plot_stat, wynik_stat, wybor_test):
     wynik = przygotuj_grupy(dane, typ)
 
     if wynik is None:
+        wynik_stat.config(text="Brak danych do wybranego testu")
         return
 
     g1, g2, nazwa1, nazwa2, ylabel = wynik
 
     if len(g1) < 2 or len(g2) < 2:
+
         wynik_stat.config(text="Za mało danych do testu")
-        log("Za mało danych do testu t")
+        log("Za mało danych do testu t", "WARNING")
         return
 
     t, p = ttest_ind(g1, g2, equal_var=False)
@@ -178,15 +197,32 @@ def rysuj_test(plot_stat, wynik_stat, wybor_test):
 
     log(f"Wynik testu t: p = {p:.4f}")
 
+    # =================
+    # WYKRES
+    # =================
+
     fig = Figure(figsize=(6,4))
     ax = fig.add_subplot(111)
 
-    ax.boxplot([g1, g2], tick_labels=[nazwa1, nazwa2])
+    box = ax.boxplot(
+        [g1, g2],
+        tick_labels=[nazwa1, nazwa2],
+        patch_artist=True
+    )
+
+    colors = ["#4C72B0", "#DD8452"]
+
+    for patch, color in zip(box["boxes"], colors):
+        patch.set_facecolor(color)
 
     ax.set_ylabel(ylabel)
-    ax.set_title(typ)
+    ax.set_title(f"Porównanie grup: {typ}")
     ax.grid(alpha=0.3)
 
     canvas = FigureCanvasTkAgg(fig, master=plot_stat)
     canvas.draw()
-    canvas.get_tk_widget().pack(fill="both", expand=True)
+
+    canvas.get_tk_widget().pack(
+        fill="both",
+        expand=True
+    )

@@ -3,6 +3,8 @@
 # =================
 
 from tkinter import filedialog
+from datetime import datetime
+
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
@@ -16,7 +18,8 @@ import matplotlib.pyplot as plt
 # LOG (nadpisywany w gui)
 # =================
 
-log = print
+def log(msg, level="INFO"):
+    print(f"[{level}] {msg}")
 
 
 # =================
@@ -28,9 +31,7 @@ def eksport_csv():
     dane = get_dane()
 
     if dane is None or dane.empty:
-
-        log("Eksport CSV przerwany – brak danych")
-
+        log("Eksport CSV przerwany – brak danych", "ERROR")
         return
 
     path = filedialog.asksaveasfilename(
@@ -39,6 +40,7 @@ def eksport_csv():
     )
 
     if not path:
+        log("Eksport CSV anulowany")
         return
 
     try:
@@ -49,57 +51,47 @@ def eksport_csv():
 
     except Exception as e:
 
-        log(f"Błąd eksportu CSV: {e}")
+        log(f"Błąd eksportu CSV: {e}", "ERROR")
 
 
 # =================
-# EKSPORT WYKRESU PNG
+# ZAPIS WYKRESU
 # =================
 
-def eksport_png():
+def zapisz_wykres(ext):
+
+    fig = plt.gcf()
+
+    if fig is None or not fig.get_axes():
+        log("Brak wykresu do zapisania", "ERROR")
+        return
 
     path = filedialog.asksaveasfilename(
-        defaultextension=".png",
-        filetypes=[("PNG", "*.png")]
+        defaultextension=ext,
+        filetypes=[(ext.upper(), f"*{ext}")]
     )
 
     if not path:
+        log("Zapis wykresu anulowany")
         return
 
     try:
 
-        plt.savefig(path)
+        fig.savefig(path, dpi=300)
 
-        log(f"Wykres zapisany PNG: {path}")
-
-    except Exception as e:
-
-        log(f"Błąd zapisu PNG: {e}")
-
-
-# =================
-# EKSPORT WYKRESU PDF
-# =================
-
-def eksport_pdf():
-
-    path = filedialog.asksaveasfilename(
-        defaultextension=".pdf",
-        filetypes=[("PDF", "*.pdf")]
-    )
-
-    if not path:
-        return
-
-    try:
-
-        plt.savefig(path)
-
-        log(f"Wykres zapisany PDF: {path}")
+        log(f"Wykres zapisany: {path}")
 
     except Exception as e:
 
-        log(f"Błąd zapisu PDF: {e}")
+        log(f"Błąd zapisu wykresu: {e}", "ERROR")
+
+
+def eksport_wykres_png():
+    zapisz_wykres(".png")
+
+
+def eksport_wykres_pdf():
+    zapisz_wykres(".pdf")
 
 
 # =================
@@ -111,9 +103,7 @@ def raport_pdf():
     dane = get_dane()
 
     if dane is None or dane.empty:
-
-        log("Raport PDF przerwany – brak danych")
-
+        log("Raport PDF przerwany – brak danych", "ERROR")
         return
 
     path = filedialog.asksaveasfilename(
@@ -122,52 +112,56 @@ def raport_pdf():
     )
 
     if not path:
+        log("Zapis raportu anulowany")
         return
 
     styles = getSampleStyleSheet()
-
     elements = []
+
+    # =================
+    # TYTUŁ
+    # =================
+
+    elements.append(
+        Paragraph("Raport analizy danych pacjentów", styles["Title"])
+    )
 
     elements.append(
         Paragraph(
-            "Raport analizy pacjentów",
-            styles["Title"]
+            f"Data wygenerowania raportu: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            styles["Normal"]
         )
     )
 
     elements.append(Spacer(1,20))
 
-    liczba = len(dane)
+    # =================
+    # PODSTAWOWE STATYSTYKI
+    # =================
 
     elements.append(
-        Paragraph(
-            f"Liczba pacjentów: {liczba}",
-            styles["Normal"]
-        )
+        Paragraph(f"Liczba pacjentów: {len(dane)}", styles["Normal"])
     )
 
-    # =================
-    # BMI
-    # =================
-
-    if "BMI" in dane.columns:
-
-        bmi = dane["BMI"].mean()
-
+    if "wiek" in dane.columns:
         elements.append(
             Paragraph(
-                f"Średnie BMI: {bmi:.2f}",
+                f"Średni wiek: {dane['wiek'].mean():.1f}",
                 styles["Normal"]
             )
         )
 
-    # =================
-    # CUKRZYCA
-    # =================
+    if "BMI" in dane.columns:
+        elements.append(
+            Paragraph(
+                f"Średnie BMI: {dane['BMI'].mean():.2f}",
+                styles["Normal"]
+            )
+        )
 
     if "cukrzyca" in dane.columns:
 
-        proc = (dane["cukrzyca"]=="tak").mean()*100
+        proc = (dane["cukrzyca"] == "tak").mean() * 100
 
         elements.append(
             Paragraph(
@@ -176,13 +170,9 @@ def raport_pdf():
             )
         )
 
-    # =================
-    # NADCIŚNIENIE
-    # =================
-
     if "nadcisnienie" in dane.columns:
 
-        proc = (dane["nadcisnienie"]=="tak").mean()*100
+        proc = (dane["nadcisnienie"] == "tak").mean() * 100
 
         elements.append(
             Paragraph(
@@ -193,20 +183,18 @@ def raport_pdf():
 
     elements.append(Spacer(1,20))
 
+    # =================
+    # KOMENTARZ
+    # =================
+
+    elements.append(
+        Paragraph("Komentarz analityczny", styles["Heading2"])
+    )
+
     komentarz = generuj_komentarz(dane)
 
     elements.append(
-        Paragraph(
-            "Komentarz analityczny:",
-            styles["Heading2"]
-        )
-    )
-
-    elements.append(
-        Paragraph(
-            komentarz,
-            styles["Normal"]
-        )
+        Paragraph(komentarz, styles["Normal"])
     )
 
     try:
@@ -222,7 +210,7 @@ def raport_pdf():
 
     except Exception as e:
 
-        log(f"Błąd zapisu raportu PDF: {e}")
+        log(f"Błąd zapisu raportu PDF: {e}", "ERROR")
 
 
 # =================
@@ -237,10 +225,16 @@ def generuj_komentarz(dane):
 
         bmi = dane["BMI"].mean()
 
-        if bmi > 25:
+        if bmi > 30:
 
             komentarz.append(
-                "Średnie BMI wskazuje na nadwagę w badanej populacji."
+                "Średnie BMI wskazuje na otyłość w analizowanej populacji."
+            )
+
+        elif bmi > 25:
+
+            komentarz.append(
+                "Średnie BMI wskazuje na nadwagę w analizowanej populacji."
             )
 
         else:
@@ -251,7 +245,7 @@ def generuj_komentarz(dane):
 
     if "nadcisnienie" in dane.columns:
 
-        proc = (dane["nadcisnienie"]=="tak").mean()*100
+        proc = (dane["nadcisnienie"] == "tak").mean() * 100
 
         if proc > 30:
 
@@ -261,7 +255,7 @@ def generuj_komentarz(dane):
 
     if "cukrzyca" in dane.columns:
 
-        proc = (dane["cukrzyca"]=="tak").mean()*100
+        proc = (dane["cukrzyca"] == "tak").mean() * 100
 
         if proc > 15:
 
