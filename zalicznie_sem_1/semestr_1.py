@@ -1,39 +1,54 @@
-#IMPORT BIBLIOTEK
+# =================
+# IMPORT BIBLIOTEK
+# =================
 
-from tkinter import filedialog, messagebox
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.figure import Figure
-from scipy.stats import ttest_ind
+# standard
 from datetime import datetime
-from tkinter import ttk
+from tkinter import filedialog, messagebox, ttk
 
+# data science
+import pandas as pd
+from scipy.stats import ttest_ind
+
+# wykresy
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+# PDF
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
 from reportlab.lib.pagesizes import A4
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.styles import getSampleStyleSheet
 
-import pandas as pd
+# GUI
 import ttkbootstrap as tk
 
-#ZMIENNE GLOBALNE
+# =================
+# ZMIENNE GLOBALNE
+# =================
 
+# dane
 df = None
-canvas = None
 df_filtered = None
 
+# wykresy
+canvas = None
 current_fig = None
+
+# dane do raportów
 current_data = None
 current_title = ""
 
-#FUNKCJE POMOCNICZE
-
+# =================
+# FUNKCJE POMOCNICZE
+# =================
 def get_dane():
+    """Zwraca dane po filtrach lub pełną bazę."""
+
     return df_filtered if df_filtered is not None else df
 
 
 # WCZYTYWANIE DANYCH CSV
-
+#=================
 def wczytaj_dane():
     global df
 
@@ -44,12 +59,17 @@ def wczytaj_dane():
 
     try:
         df = pd.read_csv(path, sep=None, engine="python")
-# ===== oblicz BMI jeśli są dane =====
+
+        global df_filtered
+        df_filtered = None
+
+        # oblicz BMI jeśli są dane
         if "waga" in df.columns and "wzrost" in df.columns:
             df["BMI"] = df["waga"] / (df["wzrost"] / 100) ** 2
 
- # ===== nadciśnienie z ciśnienia =====
+        # nadciśnienie z ciśnienia
         if "cisnienie" in df.columns:
+
             def nadcisnienie(val):
                 try:
                     s, d = val.split("/")
@@ -61,15 +81,17 @@ def wczytaj_dane():
 
         pokaz(df)
         pokaz_statystyki(df)
+
         messagebox.showinfo("Sukces", "Dane wczytane poprawnie")
 
     except Exception as e:
         messagebox.showerror("Błąd", f"Nie udało się wczytać pliku:\n{e}")
 
 # SORTOWANIE TABELI
-
-
+#=================
 def sortuj_kolumne(col, reverse):
+
+    global df_filtered
 
     dane = get_dane()
 
@@ -78,8 +100,10 @@ def sortuj_kolumne(col, reverse):
 
     try:
         dane = dane.sort_values(by=col, ascending=not reverse)
-    except:
+    except Exception:
         dane = dane.sort_values(by=col, ascending=not reverse, key=lambda x: x.astype(str))
+
+    df_filtered = dane
 
     pokaz(dane)
 
@@ -89,14 +113,17 @@ def sortuj_kolumne(col, reverse):
     )
 
 # WYŚWIETLANIE TABELI DANYCH
-
+#==============
 def pokaz(dane):
 
+    # usuń stare dane z tabeli
     tabela.delete(*tabela.get_children())
 
+    # ustaw kolumny
     tabela["columns"] = list(dane.columns)
     tabela["show"] = "headings"
 
+    # nagłówki kolumn
     for col in dane.columns:
         tabela.heading(
             col,
@@ -105,11 +132,13 @@ def pokaz(dane):
         )
         tabela.column(col, anchor="center", width=100, stretch=False)
 
-    for _, row in dane.iterrows():
-        tabela.insert("", "end", values=list(row))
+    # wstaw dane do tabeli
+    for row in dane.itertuples(index=False):
+        tabela.insert("", "end", values=row)
+
 
 #FILTROWANIE DANYCH
-
+#==================
 def filtruj_dane():
 
     if df is None:
@@ -118,46 +147,30 @@ def filtruj_dane():
 
     dane = df.copy()
 
-    # ===== PŁEĆ =====
-    plec = []
-    if var_k.get():
-        plec.append("K")
-    if var_m.get():
-        plec.append("M")
-
+    # płeć
+    plec = [p for p, var in [("K", var_k), ("M", var_m)] if var.get()]
     if plec:
         dane = dane[dane["plec"].isin(plec)]
 
-    # ===== WIEK =====
+    # wiek
     try:
-        if entry_min.get() != "":
+        if entry_min.get():
             dane = dane[dane["wiek"] >= int(entry_min.get())]
 
-        if entry_max.get() != "":
+        if entry_max.get():
             dane = dane[dane["wiek"] <= int(entry_max.get())]
 
     except ValueError:
         messagebox.showwarning("Błąd", "Wiek musi być liczbą")
         return
 
-
-    # ===== CUKRZYCA =====
-    cuk = []
-    if var_cuk_tak.get():
-        cuk.append("tak")
-    if var_cuk_nie.get():
-        cuk.append("nie")
-
+    # cukrzyca
+    cuk = [c for c, var in [("tak", var_cuk_tak), ("nie", var_cuk_nie)] if var.get()]
     if cuk:
         dane = dane[dane["cukrzyca"].isin(cuk)]
 
-    # ===== NADCIŚNIENIE =====
-    nad = []
-    if var_nad_tak.get():
-        nad.append("tak")
-    if var_nad_nie.get():
-        nad.append("nie")
-
+    # nadciśnienie
+    nad = [n for n, var in [("tak", var_nad_tak), ("nie", var_nad_nie)] if var.get()]
     if nad and "nadcisnienie" in dane.columns:
         dane = dane[dane["nadcisnienie"].isin(nad)]
 
@@ -168,7 +181,7 @@ def filtruj_dane():
     pokaz_statystyki(dane)
 
 # WYSZUKIWANIE PACJENTA
-
+#==================
 def wyszukaj():
 
     dane = get_dane()
@@ -178,22 +191,35 @@ def wyszukaj():
 
     tekst = search_entry.get().lower()
 
-    if tekst == "":
+    # jeśli pole wyszukiwania jest puste
+    if not tekst:
         pokaz(dane)
         return
 
-    wynik = dane[
-        dane.astype(str)
-        .apply(lambda row: row.str.lower().str.contains(tekst).any(), axis=1)
-    ]
+    mask = dane.apply(
+        lambda col: col.astype(str).str.lower().str.contains(tekst)
+    ).any(axis=1)
+
+    wynik = dane[mask]
 
     pokaz(wynik)
 
-#GENEROWNAIE WYKRESÓW
+#=============
+# FUNKCJE POMOCNICZE WYKRESÓW
+#=============
+def wyczysc_wykres():
+    global canvas
 
+    if canvas is not None:
+        canvas.get_tk_widget().destroy()
+
+#=============
+#GENEROWANIE WYKRESÓW
+#=================
 def wykres_bmi():
-    global df, canvas
+
     dane = get_dane()
+
     if dane is None:
         messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
         return
@@ -202,8 +228,7 @@ def wykres_bmi():
         messagebox.showwarning("Błąd", "Brak kolumn BMI lub plec")
         return
 
-    if canvas is not None:
-        canvas.get_tk_widget().destroy()
+    wyczysc_wykres()
 
     kobiety = dane[dane["plec"] == "K"]["BMI"]
     mezczyzni = dane[dane["plec"] == "M"]["BMI"]
@@ -213,7 +238,7 @@ def wykres_bmi():
     ax1 = fig.add_subplot(121)
     ax2 = fig.add_subplot(122)
 
-    # ===== Kobiety =====
+    # kobiety
     ax1.hist(kobiety, bins=15, color="pink", alpha=0.7)
     ax1.axvline(18.5, linestyle="--", color="red")
     ax1.axvline(25, linestyle="--", color="green")
@@ -224,7 +249,7 @@ def wykres_bmi():
     ax1.set_xlim(15, 45)
     ax1.grid(alpha=0.3)
 
-    # ===== Mężczyźni =====
+    # mężczyźni
     ax2.hist(mezczyzni, bins=15, color="lightblue", alpha=0.7)
     ax2.axvline(18.5, linestyle="--", color="red")
     ax2.axvline(25, linestyle="--", color="green")
@@ -244,11 +269,10 @@ def wykres_bmi():
 
 
 
-#nadcisnienie
-
 def wykres_nadcisnienie_kolowy():
-    global df, canvas
+
     dane = get_dane()
+
     if dane is None:
         messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
         return
@@ -257,8 +281,7 @@ def wykres_nadcisnienie_kolowy():
         messagebox.showwarning("Błąd", "Brak danych o nadciśnieniu")
         return
 
-    if canvas is not None:
-        canvas.get_tk_widget().destroy()
+    wyczysc_wykres()
 
     counts = dane["nadcisnienie"].value_counts()
 
@@ -288,12 +311,10 @@ def wykres_nadcisnienie_kolowy():
     current_title = "Procent pacjentów z nadciśnieniem"
 
 
-
-#wykres cykrzyca podział na typ 1 i 2 oraz brak
-
 def wykres_cukrzyca_typ_kolowy():
-    global df, canvas
+
     dane = get_dane()
+
     if dane is None:
         messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
         return
@@ -302,10 +323,8 @@ def wykres_cukrzyca_typ_kolowy():
         messagebox.showwarning("Błąd", "Brak danych o cukrzycy")
         return
 
-    if canvas is not None:
-        canvas.get_tk_widget().destroy()
+    wyczysc_wykres()
 
-# liczby
     brak = len(dane[dane["cukrzyca"] == "nie"])
     typ1 = len(dane[dane["typ_cukrzycy"] == "typ 1"])
     typ2 = len(dane[dane["typ_cukrzycy"] == "typ 2"])
@@ -332,13 +351,10 @@ def wykres_cukrzyca_typ_kolowy():
     current_data = dane
     current_title = "Cukrzyca w populacji"
 
-
-
-# wykres słupkowy lekow na cukrzyce
-
 def wykres_leki_cukrzyca():
-    global df, canvas
+
     dane = get_dane()
+
     if dane is None:
         messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
         return
@@ -347,13 +363,10 @@ def wykres_leki_cukrzyca():
         messagebox.showwarning("Błąd", "Brak danych o cukrzycy lub lekach")
         return
 
-    if canvas is not None:
-        canvas.get_tk_widget().destroy()
+    wyczysc_wykres()
 
-# tylko osoby z cukrzycą
     dane_cukrzyca = dane[dane["cukrzyca"] == "tak"].copy()
 
-# brak leków jeśli puste
     dane_cukrzyca["leki_na_cukrzyce"] = (
         dane_cukrzyca["leki_na_cukrzyce"]
         .fillna("brak leków")
@@ -375,6 +388,7 @@ def wykres_leki_cukrzyca():
     ax.set_ylabel("Liczba pacjentów")
     ax.set_title(f"Leczenie cukrzycy (N={len(dane_cukrzyca)})")
     ax.grid(axis="y", alpha=0.3)
+
     fig.tight_layout()
 
     global current_fig, current_data, current_title
@@ -383,43 +397,75 @@ def wykres_leki_cukrzyca():
     current_data = dane_cukrzyca
     current_title = "Leczenie cukrzycy"
 
-
-
+#=============
 #OBLICZANIE STATYSTYK
+#=================
+
+#statystyki opisowe
+def statystyki_opisowe():
+
+    dane = get_dane()
+
+    if dane is None:
+        messagebox.showwarning("Brak danych", "Najpierw wczytaj dane")
+        return
+
+    # wybierz tylko kolumny liczbowe
+    num = dane.select_dtypes(include="number")
+
+    if num.empty:
+        messagebox.showwarning("Błąd", "Brak danych liczbowych")
+        return
+
+    opis = num.describe().T
+
+    pokaz(opis.round(2))
 
 def pokaz_statystyki(dane):
 
     global stat_label
 
     if dane is None or len(dane) == 0:
-        stat_label.config(
-            text="Brak danych"
-        )
+        stat_label.config(text="Brak danych")
         return
 
     liczba = len(dane)
     liczba_all = len(df) if df is not None else liczba
 
-    sredni_wiek = round(dane["wiek"].mean(), 1) if "wiek" in dane.columns else "-"
-    sredni_bmi = round(dane["BMI"].mean(), 1) if "BMI" in dane.columns else "-"
+    # średni wiek
+    sredni_wiek = "-"
+    if "wiek" in dane.columns:
+        sredni_wiek = round(dane["wiek"].mean(), 1)
 
+    # średni BMI
+    sredni_bmi = "-"
+    if "BMI" in dane.columns:
+        sredni_bmi = round(dane["BMI"].mean(), 1)
+
+    # cukrzyca %
+    cuk_proc = "-"
     if "cukrzyca" in dane.columns:
         cuk_proc = round((dane["cukrzyca"] == "tak").mean() * 100, 1)
-    else:
-        cuk_proc = "-"
+
+    # nadciśnienie %
+    nad_proc = "-"
+    if "nadcisnienie" in dane.columns:
+        nad_proc = round((dane["nadcisnienie"] == "tak").mean() * 100, 1)
 
     tekst = (
         f"Pacjenci: {liczba}/{liczba_all}   |   "
         f"Średni wiek: {sredni_wiek}   |   "
         f"Średni BMI: {sredni_bmi}   |   "
-        f"Cukrzyca: {cuk_proc}%"
+        f"Cukrzyca: {cuk_proc}%   |   "
+        f"Nadciśnienie: {nad_proc}%"
     )
 
-    stat_label.config(
-        text=tekst)
+    stat_label.config(text=tekst)
 
+
+#=============
 # EKSPORT DANYCH
-
+#================
 def eksport_pdf():
 
     global current_fig, current_data, current_title
@@ -436,8 +482,7 @@ def eksport_pdf():
     if not path:
         return
 
-    from io import BytesIO
-
+    # zapis wykresu do pamięci
     img_buffer = BytesIO()
     current_fig.savefig(img_buffer, format="png", dpi=300, bbox_inches="tight")
     img_buffer.seek(0)
@@ -445,53 +490,70 @@ def eksport_pdf():
     doc = SimpleDocTemplate(path, pagesize=A4)
     styles = getSampleStyleSheet()
 
-    try:
-        pdfmetrics.registerFont(TTFont("Arial", "arial.ttf"))
-        font = "Arial"
-    except:
-        font = "Helvetica"
-
-    for style in styles.byName.values():
-        style.fontName = font
-
     elements = []
 
-
+    # tytuł raportu
     elements.append(
         Paragraph(
-            f"Statystyka T-studenta <b>{current_title}</b>",
+            f"Raport analizy danych pacjentów",
             styles["Heading1"]
         )
     )
+
     elements.append(Spacer(1, 12))
 
+    # tytuł wykresu
+    elements.append(
+        Paragraph(
+            f"<b>{current_title}</b>",
+            styles["Heading2"]
+        )
+    )
 
+    elements.append(Spacer(1, 12))
+
+    # data raportu
     elements.append(
         Paragraph(
             f"Data raportu: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
             styles["Normal"]
         )
     )
-    elements.append(Spacer(1, 12))
-    elements.append(Spacer(1, 12))
 
+    elements.append(Spacer(1, 20))
+
+    # wykres
     img = Image(img_buffer)
     img.drawHeight = 300
     img.drawWidth = 450
 
     elements.append(img)
-    elements.append(Spacer(1, 12))
+    elements.append(Spacer(1, 20))
 
+    # statystyki
     if current_data is not None:
+
+        liczba = len(current_data)
+
+        tekst = f"Liczba pacjentów w analizie: {liczba}"
+
+        if "wiek" in current_data.columns:
+            tekst += f"<br/>Średni wiek: {current_data['wiek'].mean():.1f}"
+
+        if "BMI" in current_data.columns:
+            tekst += f"<br/>Średnie BMI: {current_data['BMI'].mean():.1f}"
+
         elements.append(
             Paragraph(
-                f"Liczba pacjentów w analizie (N = {len(current_data)})",
+                tekst,
                 styles["Normal"]
             )
         )
+
     doc.build(elements)
 
-    messagebox.showinfo("Sukces", f"Zapisano PDF:\n{path}")
+    messagebox.showinfo("Sukces", f"Raport zapisany:\n{path}")
+
 #eksport danych do csv
 
 def eksport_csv():
@@ -517,13 +579,34 @@ def eksport_csv():
         "Sukces",
         f"Zapisano {len(dane_do_zapisu)} rekordów"
     )
+#eksport wykresów do PNG
+def eksport_png():
 
+    global current_fig
 
+    if current_fig is None:
+        messagebox.showwarning("Brak wykresu", "Najpierw wygeneruj wykres")
+        return
+
+    path = filedialog.asksaveasfilename(
+        defaultextension=".png",
+        filetypes=[("PNG files", "*.png")]
+    )
+
+    if not path:
+        return
+
+    current_fig.savefig(path, dpi=300, bbox_inches="tight")
+
+    messagebox.showinfo("Sukces", f"Wykres zapisany:\n{path}")
+
+#=============
 #ANALIZA STATYSTYCZNA(T-STUDENTA)
-
+#===========
 def okno_ttest():
 
-    global df, df_filtered, current_fig, current_data, current_title
+    global current_fig, current_data, current_title
+
     dane = get_dane()
 
     if dane is None:
@@ -534,7 +617,7 @@ def okno_ttest():
     win.title("Test t-Studenta")
     win.geometry("900x650")
 
-
+    # ===== PANEL GÓRNY =====
     top = ttk.Frame(win)
     top.pack(fill="x", pady=5)
 
@@ -556,10 +639,11 @@ def okno_ttest():
 
     ttk.Button(top, text="Uruchom", command=lambda: rysuj()).pack(side="left", padx=5)
 
-
+    # ===== OBSZAR WYKRESU =====
     plot_frame = ttk.Frame(win)
     plot_frame.pack(fill="both", expand=True)
 
+    # ===== WYNIK TESTU =====
     wynik_label = ttk.Label(
         win,
         text="",
@@ -568,6 +652,7 @@ def okno_ttest():
     )
     wynik_label.pack(pady=5)
 
+    # ===== PANEL DOLNY =====
     bottom = ttk.Frame(win)
     bottom.pack(fill="x", pady=10)
 
@@ -575,43 +660,54 @@ def okno_ttest():
 
         global current_fig, current_data, current_title
 
+        # wyczyść poprzedni wykres
         for widget in plot_frame.winfo_children():
             widget.destroy()
 
         typ = wybor.get()
 
+        # ===== WYBÓR GRUP =====
         if typ == "BMI — Płeć":
+
             g1 = dane[dane["plec"] == "K"]["BMI"].dropna()
             g2 = dane[dane["plec"] == "M"]["BMI"].dropna()
+
             nazwa1, nazwa2 = "Kobiety", "Mężczyźni"
             ylabel = "BMI"
 
         elif typ == "BMI — Cukrzyca":
+
             g1 = dane[dane["cukrzyca"] == "tak"]["BMI"].dropna()
             g2 = dane[dane["cukrzyca"] == "nie"]["BMI"].dropna()
+
             nazwa1, nazwa2 = "Cukrzyca", "Brak"
             ylabel = "BMI"
 
         elif typ == "BMI — Nadciśnienie":
+
             g1 = dane[dane["nadcisnienie"] == "tak"]["BMI"].dropna()
             g2 = dane[dane["nadcisnienie"] == "nie"]["BMI"].dropna()
+
             nazwa1, nazwa2 = "Nadciśnienie", "Brak"
             ylabel = "BMI"
 
         elif typ == "Wiek — Płeć":
+
             g1 = dane[dane["plec"] == "K"]["wiek"].dropna()
             g2 = dane[dane["plec"] == "M"]["wiek"].dropna()
+
             nazwa1, nazwa2 = "Kobiety", "Mężczyźni"
             ylabel = "Wiek"
 
         else:
             return
 
+        # ===== SPRAWDZENIE DANYCH =====
         if len(g1) < 2 or len(g2) < 2:
             wynik_label.config(text="Za mało danych")
             return
 
-
+        # ===== TEST T-STUDENTA =====
         t, p = ttest_ind(g1, g2, equal_var=False)
 
         tekst = (
@@ -622,8 +718,8 @@ def okno_ttest():
 
         wynik_label.config(text=tekst)
 
-# ===== WYKRES =====
-        fig = Figure(figsize=(6, 4))
+        # ===== WYKRES =====
+        fig = Figure(figsize=(6,4))
         ax = fig.add_subplot(111)
 
         ax.boxplot([g1, g2], tick_labels=[nazwa1, nazwa2])
@@ -787,18 +883,18 @@ def rysuj_wykres():
     if canvas:
         canvas.get_tk_widget().destroy()
 
-    typ = wybor_wykres.get()
+    tab = notebook_wykresy.tab(notebook_wykresy.select(), "text")
 
-    if typ == "BMI":
+    if tab == "BMI":
         wykres_bmi()
 
-    elif typ == "Nadciśnienie %":
+    elif tab == "Nadciśnienie":
         wykres_nadcisnienie_kolowy()
 
-    elif typ == "Cukrzyca typy %":
+    elif tab == "Cukrzyca":
         wykres_cukrzyca_typ_kolowy()
 
-    elif typ == "Leki na cukrzycę":
+    elif tab == "Leki":
         wykres_leki_cukrzyca()
 
     if current_fig is None:
@@ -808,6 +904,32 @@ def rysuj_wykres():
 
     canvas.draw()
     canvas.get_tk_widget().pack(fill="both", expand=True)
+
+#zmien wykresy
+def zmien_wykres(event):
+
+    global plot_frame, canvas
+
+    if canvas:
+        canvas.get_tk_widget().destroy()
+
+    tab = notebook_wykresy.tab(notebook_wykresy.select(), "text")
+
+    if tab == "BMI":
+        plot_frame = ttk.Frame(tab_bmi)
+
+    elif tab == "Nadciśnienie":
+        plot_frame = ttk.Frame(tab_nad)
+
+    elif tab == "Cukrzyca":
+        plot_frame = ttk.Frame(tab_cuk)
+
+    elif tab == "Leki":
+        plot_frame = ttk.Frame(tab_leki)
+
+    plot_frame.pack(fill="both", expand=True)
+
+    rysuj_wykres()
 
 # RYSOWANIE TESTU STATYSTYCZNEGO
 
@@ -883,9 +1005,9 @@ def rysuj_test():
     canvas.get_tk_widget().pack(fill="both", expand=True)
 
     current_fig = fig
-
+#=============
 # INTERFEJS GRAFICZNY APLIKACJI (GUI)
-
+#=============
 okno = tk.Window(themename="flatly")
 okno.title("Analiza pacjentów")
 
@@ -895,6 +1017,8 @@ okno.minsize(1150, 600)
 style = ttk.Style()
 style.configure("Treeview", rowheight=28, font=("Segoe UI", 10))
 style.configure("Treeview.Heading", font=("Segoe UI", 10, "bold"))
+
+
 
 #PANEL STATYSTYK (GÓRNY PASEK)
 stat_label = ttk.Label(
@@ -954,9 +1078,10 @@ ttk.Button(
 
 ttk.Button(
     toolbar,
-    text="Wczytaj nową bazę",
-    command=wczytaj_dane
+    text="Statystyki opisowe",
+    command=statystyki_opisowe
 ).pack(side="left", padx=5)
+
 
 ttk.Button(
     toolbar,
@@ -1004,38 +1129,39 @@ tabela.pack(fill="both", expand=True)
 
 
 # PANEL WYKRESÓW
+# =================
 
-top_wykres = ttk.Frame(tab_wykresy)
-top_wykres.pack(pady=15)
+notebook_wykresy = ttk.Notebook(tab_wykresy)
+notebook_wykresy.pack(fill="both", expand=True)
 
-ttk.Label(top_wykres, text="Wybierz wykres:", font=("Arial", 12)).pack(side="left", padx=5)
+tab_bmi = ttk.Frame(notebook_wykresy)
+tab_nad = ttk.Frame(notebook_wykresy)
+tab_cuk = ttk.Frame(notebook_wykresy)
+tab_leki = ttk.Frame(notebook_wykresy)
 
-wybor_wykres = ttk.Combobox(
-    top_wykres,
-    values=[
-        "BMI",
-        "Nadciśnienie %",
-        "Cukrzyca typy %",
-        "Leki na cukrzycę"
-    ],
-    state="readonly",
-    width=25
-)
+notebook_wykresy.add(tab_bmi, text="BMI")
+notebook_wykresy.add(tab_nad, text="Nadciśnienie")
+notebook_wykresy.add(tab_cuk, text="Cukrzyca")
+notebook_wykresy.add(tab_leki, text="Leki")
+notebook_wykresy.bind("<<NotebookTabChanged>>", zmien_wykres)
 
-wybor_wykres.pack(side="left", padx=5)
-wybor_wykres.current(0)
-
-wybor_wykres.bind("<<ComboboxSelected>>", lambda e: rysuj_wykres())
-
-ttk.Button(
-    top_wykres,
-    text="Eksport PDF",
-    command=eksport_pdf
-).pack(side="left", padx=10)
-
-plot_frame = ttk.Frame(tab_wykresy)
+plot_frame = ttk.Frame(tab_bmi)
 plot_frame.pack(fill="both", expand=True)
 
+frame_export = ttk.Frame(tab_wykresy)
+frame_export.pack(pady=5)
+
+ttk.Button(
+    frame_export,
+    text="Eksport PDF",
+    command=eksport_pdf
+).pack(side="left", padx=5)
+
+ttk.Button(
+    frame_export,
+    text="Eksport PNG",
+    command=eksport_png
+).pack(side="left", padx=5)
 # PANEL ANALIZY STATYSTYCZNEJ
 
 top_stat = ttk.Frame(tab_stat)
@@ -1065,7 +1191,7 @@ wybor_test.current(0)
 ttk.Button(
     top_stat,
     text="Uruchom test",
-    command=lambda: rysuj_test()
+    command=rysuj_test()
 ).pack(side="left", padx=10)
 
 
