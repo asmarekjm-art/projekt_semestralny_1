@@ -31,10 +31,25 @@ def wyczysc_wykres():
 
 
 # =================
+# POKAZ WYKRES
+# =================
+
+def pokaz_wykres(frame, fig):
+
+    global canvas
+
+    wyczysc_wykres()
+
+    canvas = FigureCanvasTkAgg(fig, master=frame)
+    canvas.draw()
+    canvas.get_tk_widget().pack(fill="both", expand=True)
+
+
+# =================
 # WYKRES BMI
 # =================
 
-def wykres_bmi():
+def wykres_bmi(frame):
 
     dane = get_dane()
 
@@ -45,8 +60,6 @@ def wykres_bmi():
     if "BMI" not in dane.columns or "plec" not in dane.columns:
         messagebox.showwarning("Błąd", "Brak kolumn BMI lub plec")
         return
-
-    wyczysc_wykres()
 
     kobiety = dane[dane["plec"] == "K"]["BMI"]
     mezczyzni = dane[dane["plec"] == "M"]["BMI"]
@@ -83,12 +96,14 @@ def wykres_bmi():
     current_data = dane
     current_title = "Rozkład BMI według płci"
 
+    pokaz_wykres(frame, fig)
+
 
 # =================
 # WYKRES NADCIŚNIENIA
 # =================
 
-def wykres_nadcisnienie_kolowy():
+def wykres_nadcisnienie_kolowy(frame):
 
     dane = get_dane()
 
@@ -99,8 +114,6 @@ def wykres_nadcisnienie_kolowy():
     if "nadcisnienie" not in dane.columns:
         messagebox.showwarning("Błąd", "Brak danych o nadciśnieniu")
         return
-
-    wyczysc_wykres()
 
     counts = dane["nadcisnienie"].value_counts()
 
@@ -130,12 +143,14 @@ def wykres_nadcisnienie_kolowy():
     current_data = dane
     current_title = "Procent pacjentów z nadciśnieniem"
 
+    pokaz_wykres(frame, fig)
+
 
 # =================
 # WYKRES CUKRZYCY
 # =================
 
-def wykres_cukrzyca_typ_kolowy():
+def wykres_cukrzyca_typ_kolowy(frame):
 
     dane = get_dane()
 
@@ -146,8 +161,6 @@ def wykres_cukrzyca_typ_kolowy():
     if "cukrzyca" not in dane.columns or "typ_cukrzycy" not in dane.columns:
         messagebox.showwarning("Błąd", "Brak danych o cukrzycy")
         return
-
-    wyczysc_wykres()
 
     brak = len(dane[dane["cukrzyca"] == "nie"])
     typ1 = len(dane[dane["typ_cukrzycy"] == "typ 1"])
@@ -175,12 +188,14 @@ def wykres_cukrzyca_typ_kolowy():
     current_data = dane
     current_title = "Cukrzyca w populacji"
 
+    pokaz_wykres(frame, fig)
+
 
 # =================
 # WYKRES LEKÓW
 # =================
 
-def wykres_leki_cukrzyca():
+def wykres_leki_cukrzyca(frame):
 
     dane = get_dane()
 
@@ -191,8 +206,6 @@ def wykres_leki_cukrzyca():
     if "leki_na_cukrzyce" not in dane.columns or "cukrzyca" not in dane.columns:
         messagebox.showwarning("Błąd","Brak danych o cukrzycy lub lekach")
         return
-
-    wyczysc_wykres()
 
     dane_cukrzyca = dane[dane["cukrzyca"]=="tak"].copy()
 
@@ -226,3 +239,5 @@ def wykres_leki_cukrzyca():
     current_fig = fig
     current_data = dane_cukrzyca
     current_title = "Leczenie cukrzycy"
+
+    pokaz_wykres(frame, fig)
