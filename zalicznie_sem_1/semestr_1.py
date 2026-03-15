@@ -5,6 +5,7 @@
 # standard
 from datetime import datetime
 from tkinter import filedialog, messagebox, ttk
+from io import BytesIO
 
 # data science
 import pandas as pd
@@ -1191,7 +1192,7 @@ wybor_test.current(0)
 ttk.Button(
     top_stat,
     text="Uruchom test",
-    command=rysuj_test()
+    command=rysuj_test
 ).pack(side="left", padx=10)
 
 
@@ -1274,5 +1275,4 @@ btn_reset.pack(side="left", expand=True, fill="x", padx=3)
 
 
 # START APLIKACJI
-okno.after(100, rysuj_wykres)
 okno.mainloop()
