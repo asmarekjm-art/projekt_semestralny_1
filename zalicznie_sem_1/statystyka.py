@@ -5,9 +5,15 @@
 from scipy.stats import ttest_ind
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from tkinter import messagebox
 
 from dane import get_dane
+
+
+# =================
+# LOG (nadpisywany z gui)
+# =================
+
+log = print
 
 
 # =================
@@ -19,13 +25,13 @@ def statystyki_opisowe(pokaz):
     dane = get_dane()
 
     if dane is None:
-        messagebox.showwarning("Brak danych", "Najpierw wczytaj dane")
+        log("Statystyki opisowe przerwane – brak danych")
         return
 
     num = dane.select_dtypes(include="number")
 
     if num.empty:
-        messagebox.showwarning("Błąd", "Brak danych liczbowych")
+        log("Brak danych liczbowych do statystyk")
         return
 
     opis = num.describe().T
@@ -49,6 +55,8 @@ def statystyki_opisowe(pokaz):
         "75%": "3 kwartyl",
         "max": "Maximum"
     })
+
+    log("Wyświetlanie statystyk opisowych")
 
     pokaz(opis.round(2))
 
@@ -138,7 +146,7 @@ def rysuj_test(plot_stat, wynik_stat, wybor_test):
     dane = get_dane()
 
     if dane is None:
-        messagebox.showwarning("Brak danych", "Najpierw wczytaj dane")
+        log("Test statystyczny przerwany – brak danych")
         return
 
     for widget in plot_stat.winfo_children():
@@ -155,6 +163,7 @@ def rysuj_test(plot_stat, wynik_stat, wybor_test):
 
     if len(g1) < 2 or len(g2) < 2:
         wynik_stat.config(text="Za mało danych do testu")
+        log("Za mało danych do testu t")
         return
 
     t, p = ttest_ind(g1, g2, equal_var=False)
@@ -166,6 +175,8 @@ def rysuj_test(plot_stat, wynik_stat, wybor_test):
     )
 
     wynik_stat.config(text=tekst)
+
+    log(f"Wynik testu t: p = {p:.4f}")
 
     fig = Figure(figsize=(6,4))
     ax = fig.add_subplot(111)

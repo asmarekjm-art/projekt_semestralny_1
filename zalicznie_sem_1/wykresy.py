@@ -4,9 +4,15 @@
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from tkinter import messagebox
 
 from dane import get_dane
+
+
+# =================
+# LOG (nadpisywany z gui)
+# =================
+
+log = print
 
 
 # =================
@@ -68,11 +74,11 @@ def wykres_bmi(frame):
     dane = get_dane()
 
     if dane is None:
-        messagebox.showwarning("Brak danych", "Najpierw wczytaj dane")
+        log("Wykres BMI przerwany – brak danych")
         return
 
     if {"BMI", "plec"}.issubset(dane.columns) is False:
-        messagebox.showwarning("Błąd", "Brak kolumn BMI lub plec")
+        log("Brak kolumn BMI lub plec")
         return
 
     kobiety = dane[dane["plec"] == "K"]["BMI"]
@@ -106,6 +112,8 @@ def wykres_bmi(frame):
 
     zapisz_aktualny_wykres(fig, dane, "Rozkład BMI według płci")
 
+    log("Wyświetlanie wykresu BMI")
+
     pokaz_wykres(frame, fig)
 
 
@@ -118,11 +126,11 @@ def wykres_nadcisnienie_kolowy(frame):
     dane = get_dane()
 
     if dane is None:
-        messagebox.showwarning("Brak danych", "Najpierw wczytaj dane")
+        log("Wykres nadciśnienia przerwany – brak danych")
         return
 
     if "nadcisnienie" not in dane.columns:
-        messagebox.showwarning("Błąd", "Brak danych o nadciśnieniu")
+        log("Brak kolumny nadcisnienie")
         return
 
     counts = dane["nadcisnienie"].value_counts()
@@ -149,6 +157,8 @@ def wykres_nadcisnienie_kolowy(frame):
 
     zapisz_aktualny_wykres(fig, dane, "Procent pacjentów z nadciśnieniem")
 
+    log("Wyświetlanie wykresu nadciśnienia")
+
     pokaz_wykres(frame, fig)
 
 
@@ -161,11 +171,11 @@ def wykres_cukrzyca_typ_kolowy(frame):
     dane = get_dane()
 
     if dane is None:
-        messagebox.showwarning("Brak danych", "Najpierw wczytaj dane")
+        log("Wykres cukrzycy przerwany – brak danych")
         return
 
     if {"cukrzyca","typ_cukrzycy"}.issubset(dane.columns) is False:
-        messagebox.showwarning("Błąd", "Brak danych o cukrzycy")
+        log("Brak kolumn cukrzyca lub typ_cukrzycy")
         return
 
     brak = len(dane[dane["cukrzyca"] == "nie"])
@@ -190,6 +200,8 @@ def wykres_cukrzyca_typ_kolowy(frame):
 
     zapisz_aktualny_wykres(fig, dane, "Cukrzyca w populacji")
 
+    log("Wyświetlanie wykresu cukrzycy")
+
     pokaz_wykres(frame, fig)
 
 
@@ -202,11 +214,11 @@ def wykres_leki_cukrzyca(frame):
     dane = get_dane()
 
     if dane is None:
-        messagebox.showwarning("Brak danych", "Najpierw wczytaj dane")
+        log("Wykres leków przerwany – brak danych")
         return
 
     if {"leki_na_cukrzyce","cukrzyca"}.issubset(dane.columns) is False:
-        messagebox.showwarning("Błąd", "Brak danych o lekach")
+        log("Brak kolumn leki_na_cukrzyce lub cukrzyca")
         return
 
     dane_cukrzyca = dane[dane["cukrzyca"]=="tak"].copy()
@@ -237,5 +249,7 @@ def wykres_leki_cukrzyca(frame):
     fig.tight_layout()
 
     zapisz_aktualny_wykres(fig, dane_cukrzyca, "Leczenie cukrzycy")
+
+    log("Wyświetlanie wykresu leczenia cukrzycy")
 
     pokaz_wykres(frame, fig)

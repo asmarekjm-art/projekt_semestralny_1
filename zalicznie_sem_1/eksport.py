@@ -2,7 +2,7 @@
 # IMPORTY
 # =================
 
-from tkinter import filedialog, messagebox
+from tkinter import filedialog
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
@@ -29,11 +29,6 @@ def eksport_csv():
 
     if dane is None or dane.empty:
 
-        messagebox.showwarning(
-            "Brak danych",
-            "Nie ma danych do eksportu"
-        )
-
         log("Eksport CSV przerwany – brak danych")
 
         return
@@ -54,12 +49,7 @@ def eksport_csv():
 
     except Exception as e:
 
-        messagebox.showerror(
-            "Błąd eksportu",
-            str(e)
-        )
-
-        log("Błąd eksportu CSV")
+        log(f"Błąd eksportu CSV: {e}")
 
 
 # =================
@@ -84,12 +74,7 @@ def eksport_png():
 
     except Exception as e:
 
-        messagebox.showerror(
-            "Błąd",
-            str(e)
-        )
-
-        log("Błąd zapisu PNG")
+        log(f"Błąd zapisu PNG: {e}")
 
 
 # =================
@@ -114,12 +99,7 @@ def eksport_pdf():
 
     except Exception as e:
 
-        messagebox.showerror(
-            "Błąd",
-            str(e)
-        )
-
-        log("Błąd zapisu PDF")
+        log(f"Błąd zapisu PDF: {e}")
 
 
 # =================
@@ -131,11 +111,6 @@ def raport_pdf():
     dane = get_dane()
 
     if dane is None or dane.empty:
-
-        messagebox.showwarning(
-            "Brak danych",
-            "Brak danych do raportu"
-        )
 
         log("Raport PDF przerwany – brak danych")
 
@@ -218,10 +193,6 @@ def raport_pdf():
 
     elements.append(Spacer(1,20))
 
-    # =================
-    # KOMENTARZ
-    # =================
-
     komentarz = generuj_komentarz(dane)
 
     elements.append(
@@ -251,12 +222,7 @@ def raport_pdf():
 
     except Exception as e:
 
-        messagebox.showerror(
-            "Błąd zapisu PDF",
-            str(e)
-        )
-
-        log("Błąd zapisu raportu PDF")
+        log(f"Błąd zapisu raportu PDF: {e}")
 
 
 # =================
