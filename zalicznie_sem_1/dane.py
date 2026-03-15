@@ -12,11 +12,16 @@ pd.options.mode.chained_assignment = None
 # ZMIENNE GLOBALNE
 # =================
 
-df = None
+df = pd.DataFrame()
 df_filtered = None
 
-# funkcja log zostanie nadpisana w gui.py
-log = print
+
+# =================
+# LOG
+# =================
+
+def log(msg):
+    print(msg)
 
 
 # =================
@@ -38,18 +43,10 @@ def nadcisnienie(val):
         return "nie"
 
     try:
-
-        s, d = val.split("/")
-        s = int(s)
-        d = int(d)
-
-        if s >= 140 or d >= 90:
-            return "tak"
-        else:
-            return "nie"
+        s, d = map(int, val.split("/"))
+        return "tak" if s >= 140 or d >= 90 else "nie"
 
     except Exception:
-
         return "nie"
 
 
@@ -68,7 +65,6 @@ def wczytaj_dane(pokaz, pokaz_statystyki):
     )
 
     if not path:
-
         log("Nie wybrano pliku")
         return
 
@@ -124,7 +120,6 @@ def wczytaj_dane(pokaz, pokaz_statystyki):
             log("Brak kolumny cisnienie")
 
         pokaz(df)
-
         pokaz_statystyki(df)
 
         log("Dane zostały wyświetlone")
@@ -132,8 +127,7 @@ def wczytaj_dane(pokaz, pokaz_statystyki):
     except Exception as e:
 
         log("Błąd wczytywania danych")
-
-        print(e)
+        log(str(e))
 
 
 # =================
@@ -146,10 +140,9 @@ def sortuj_kolumne(col, reverse, pokaz):
 
     dane = get_dane()
 
-    if dane is None:
+    if dane is None or dane.empty:
 
         log("Sortowanie przerwane – brak danych")
-
         return
 
     log(f"Sortowanie kolumny: {col}")
@@ -162,6 +155,8 @@ def sortuj_kolumne(col, reverse, pokaz):
         )
 
     except Exception:
+
+        log("Sortowanie jako tekst")
 
         dane = dane.sort_values(
             by=col,
@@ -195,10 +190,9 @@ def filtruj_dane(
 
     global df_filtered
 
-    if df is None:
+    if df.empty:
 
         log("Filtrowanie przerwane – brak wczytanych danych")
-
         return
 
     log("Rozpoczęcie filtrowania danych")
@@ -229,22 +223,23 @@ def filtruj_dane(
 
     try:
 
-        if entry_min.get():
+        if "wiek" in dane.columns:
 
-            dane = dane[dane["wiek"] >= int(entry_min.get())]
+            if entry_min.get():
 
-            log(f"Wiek od: {entry_min.get()}")
+                dane = dane[dane["wiek"] >= int(entry_min.get())]
 
-        if entry_max.get():
+                log(f"Wiek od: {entry_min.get()}")
 
-            dane = dane[dane["wiek"] <= int(entry_max.get())]
+            if entry_max.get():
 
-            log(f"Wiek do: {entry_max.get()}")
+                dane = dane[dane["wiek"] <= int(entry_max.get())]
+
+                log(f"Wiek do: {entry_max.get()}")
 
     except ValueError:
 
         log("Błąd – wiek musi być liczbą")
-
         return
 
     # =================
@@ -288,7 +283,6 @@ def filtruj_dane(
     log(f"Wynik filtrowania: {len(dane)} rekordów")
 
     pokaz(dane)
-
     pokaz_statystyki(dane)
 
 
@@ -300,20 +294,18 @@ def wyszukaj(search_entry, pokaz):
 
     dane = get_dane()
 
-    if dane is None:
+    if dane is None or dane.empty:
 
         log("Wyszukiwanie przerwane – brak danych")
-
         return
 
-    tekst = search_entry.get().lower()
+    tekst = search_entry.get().strip().lower()
 
     log(f"Wyszukiwanie: {tekst}")
 
     if not tekst:
 
         pokaz(dane)
-
         return
 
     mask = dane.apply(
@@ -360,10 +352,11 @@ def reset_filtry(
 
     df_filtered = None
 
-    if df is not None:
+    if not df.empty:
 
         pokaz(df)
-
         pokaz_stat(df)
+
+        log("Przywrócono pełny zbiór danych")
 
     log("Filtry zostały zresetowane")

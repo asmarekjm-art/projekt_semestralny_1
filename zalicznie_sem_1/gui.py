@@ -19,7 +19,7 @@ from eksport import eksport_csv, eksport_pdf, eksport_png, raport_pdf
 import eksport
 import dane
 import wykresy
-
+import statystyka
 
 # =================
 # OKNO
@@ -392,10 +392,12 @@ log_box.pack(fill="x")
 def log(msg):
     log_box.insert("end", msg + "\n")
     log_box.see("end")
+    log_box.update_idletasks()
 
 
 eksport.log = log
 dane.log = log
 wykresy.log = log
+statystyka.log = log
 
-log("Aplikacja uruchomiona")
+okno.after(100, lambda: log("Aplikacja uruchomiona"))
