@@ -30,7 +30,15 @@ def statystyki_opisowe(pokaz):
 
     opis = num.describe().T
 
-    # ZMIANA NAZW KOLUMN NA POLSKIE
+    # podpisy wierszy
+    opis = opis.rename(index={
+        "wiek": "Wiek pacjentów [lata]",
+        "waga": "Masa ciała [kg]",
+        "wzrost": "Wzrost [cm]",
+        "BMI": "BMI (Body Mass Index)"
+    })
+
+    # podpisy kolumn
     opis = opis.rename(columns={
         "count": "Liczba obserwacji",
         "mean": "Średnia",
@@ -139,11 +147,9 @@ def rysuj_test(plot_stat, wynik_stat, wybor_test):
     else:
         return
 
-
     if len(g1) < 2 or len(g2) < 2:
         wynik_stat.config(text="Za mało danych")
         return
-
 
     t, p = ttest_ind(g1, g2, equal_var=False)
 
@@ -155,7 +161,6 @@ def rysuj_test(plot_stat, wynik_stat, wybor_test):
 
     wynik_stat.config(text=tekst)
 
-
     fig = Figure(figsize=(6,4))
     ax = fig.add_subplot(111)
 
@@ -165,7 +170,6 @@ def rysuj_test(plot_stat, wynik_stat, wybor_test):
     ax.set_title(typ)
 
     ax.grid(alpha=0.3)
-
 
     canvas = FigureCanvasTkAgg(fig, master=plot_stat)
     canvas.draw()

@@ -236,17 +236,18 @@ def pokaz(dane):
 
     tabela.delete(*tabela.get_children())
 
-    tabela["columns"] = list(dane.columns)
+    # dodajemy indeks jako pierwszą kolumnę
+    kolumny = ["Zmienne"] + list(dane.columns)
+
+    tabela["columns"] = kolumny
     tabela["show"] = "headings"
 
-    for col in dane.columns:
+    for col in kolumny:
         tabela.heading(col, text=col)
-        tabela.column(col, anchor="center", width=100)
+        tabela.column(col, anchor="center", width=120)
 
-    for row in dane.itertuples(index=False):
-        tabela.insert("", "end", values=row)
-
-
+    for idx, row in dane.iterrows():
+        tabela.insert("", "end", values=[idx] + list(row))
 # =================
 # WYKRESY
 # =================
