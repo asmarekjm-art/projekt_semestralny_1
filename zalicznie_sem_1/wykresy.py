@@ -24,6 +24,7 @@ current_title = ""
 # =================
 
 def wyczysc_wykres():
+
     global canvas
 
     if canvas is not None:
@@ -31,7 +32,7 @@ def wyczysc_wykres():
 
 
 # =================
-# POKAZ WYKRES
+# WYŚWIETLANIE WYKRESU
 # =================
 
 def pokaz_wykres(frame, fig):
@@ -46,6 +47,19 @@ def pokaz_wykres(frame, fig):
 
 
 # =================
+# ZAPIS AKTUALNEGO WYKRESU
+# =================
+
+def zapisz_aktualny_wykres(fig, dane, tytul):
+
+    global current_fig, current_data, current_title
+
+    current_fig = fig
+    current_data = dane
+    current_title = tytul
+
+
+# =================
 # WYKRES BMI
 # =================
 
@@ -54,10 +68,10 @@ def wykres_bmi(frame):
     dane = get_dane()
 
     if dane is None:
-        messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
+        messagebox.showwarning("Brak danych", "Najpierw wczytaj dane")
         return
 
-    if "BMI" not in dane.columns or "plec" not in dane.columns:
+    if {"BMI", "plec"}.issubset(dane.columns) is False:
         messagebox.showwarning("Błąd", "Brak kolumn BMI lub plec")
         return
 
@@ -90,11 +104,7 @@ def wykres_bmi(frame):
 
     fig.suptitle("Rozkład BMI według płci")
 
-    global current_fig, current_data, current_title
-
-    current_fig = fig
-    current_data = dane
-    current_title = "Rozkład BMI według płci"
+    zapisz_aktualny_wykres(fig, dane, "Rozkład BMI według płci")
 
     pokaz_wykres(frame, fig)
 
@@ -108,7 +118,7 @@ def wykres_nadcisnienie_kolowy(frame):
     dane = get_dane()
 
     if dane is None:
-        messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
+        messagebox.showwarning("Brak danych", "Najpierw wczytaj dane")
         return
 
     if "nadcisnienie" not in dane.columns:
@@ -117,7 +127,7 @@ def wykres_nadcisnienie_kolowy(frame):
 
     counts = dane["nadcisnienie"].value_counts()
 
-    labels = ["Nadciśnienie","Brak nadciśnienia"]
+    labels = ["Nadciśnienie", "Brak nadciśnienia"]
 
     values = [
         counts.get("tak",0),
@@ -137,11 +147,7 @@ def wykres_nadcisnienie_kolowy(frame):
 
     ax.set_title(f"Procent pacjentów z nadciśnieniem (N={len(dane)})")
 
-    global current_fig, current_data, current_title
-
-    current_fig = fig
-    current_data = dane
-    current_title = "Procent pacjentów z nadciśnieniem"
+    zapisz_aktualny_wykres(fig, dane, "Procent pacjentów z nadciśnieniem")
 
     pokaz_wykres(frame, fig)
 
@@ -155,10 +161,10 @@ def wykres_cukrzyca_typ_kolowy(frame):
     dane = get_dane()
 
     if dane is None:
-        messagebox.showwarning("Brak danych", "Najpierw wczytaj plik CSV")
+        messagebox.showwarning("Brak danych", "Najpierw wczytaj dane")
         return
 
-    if "cukrzyca" not in dane.columns or "typ_cukrzycy" not in dane.columns:
+    if {"cukrzyca","typ_cukrzycy"}.issubset(dane.columns) is False:
         messagebox.showwarning("Błąd", "Brak danych o cukrzycy")
         return
 
@@ -182,11 +188,7 @@ def wykres_cukrzyca_typ_kolowy(frame):
 
     ax.set_title(f"Cukrzyca w populacji (N={len(dane)})")
 
-    global current_fig, current_data, current_title
-
-    current_fig = fig
-    current_data = dane
-    current_title = "Cukrzyca w populacji"
+    zapisz_aktualny_wykres(fig, dane, "Cukrzyca w populacji")
 
     pokaz_wykres(frame, fig)
 
@@ -200,11 +202,11 @@ def wykres_leki_cukrzyca(frame):
     dane = get_dane()
 
     if dane is None:
-        messagebox.showwarning("Brak danych","Najpierw wczytaj plik CSV")
+        messagebox.showwarning("Brak danych", "Najpierw wczytaj dane")
         return
 
-    if "leki_na_cukrzyce" not in dane.columns or "cukrzyca" not in dane.columns:
-        messagebox.showwarning("Błąd","Brak danych o cukrzycy lub lekach")
+    if {"leki_na_cukrzyce","cukrzyca"}.issubset(dane.columns) is False:
+        messagebox.showwarning("Błąd", "Brak danych o lekach")
         return
 
     dane_cukrzyca = dane[dane["cukrzyca"]=="tak"].copy()
@@ -234,10 +236,6 @@ def wykres_leki_cukrzyca(frame):
 
     fig.tight_layout()
 
-    global current_fig, current_data, current_title
-
-    current_fig = fig
-    current_data = dane_cukrzyca
-    current_title = "Leczenie cukrzycy"
+    zapisz_aktualny_wykres(fig, dane_cukrzyca, "Leczenie cukrzycy")
 
     pokaz_wykres(frame, fig)

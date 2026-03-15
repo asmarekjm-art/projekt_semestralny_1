@@ -4,7 +4,7 @@
 
 from tkinter import filedialog, messagebox
 from dane import get_dane
-from wykresy import current_fig
+import wykresy
 
 
 # =================
@@ -29,7 +29,7 @@ def eksport_csv():
 
     dane.to_csv(path, index=False)
 
-    messagebox.showinfo("Sukces", "Dane zapisane do CSV")
+    log("Dane zapisane do CSV")
 
 
 # =================
@@ -38,7 +38,7 @@ def eksport_csv():
 
 def eksport_png():
 
-    if current_fig is None:
+    if wykresy.current_fig is None:
         messagebox.showwarning("Brak wykresu", "Najpierw wygeneruj wykres")
         return
 
@@ -50,9 +50,9 @@ def eksport_png():
     if not path:
         return
 
-    current_fig.savefig(path, dpi=300)
+    wykresy.current_fig.savefig(path, dpi=300)
 
-    messagebox.showinfo("Sukces", "Wykres zapisany jako PNG")
+    log("Wykres zapisany jako PNG")
 
 
 # =================
@@ -61,7 +61,7 @@ def eksport_png():
 
 def eksport_pdf():
 
-    if current_fig is None:
+    if wykresy.current_fig is None:
         messagebox.showwarning("Brak wykresu", "Najpierw wygeneruj wykres")
         return
 
@@ -73,6 +73,6 @@ def eksport_pdf():
     if not path:
         return
 
-    current_fig.savefig(path)
+    wykresy.current_fig.savefig(path)
 
     messagebox.showinfo("Sukces", "Wykres zapisany jako PDF")

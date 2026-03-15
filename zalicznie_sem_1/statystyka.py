@@ -54,7 +54,7 @@ def statystyki_opisowe(pokaz):
 
 
 # =================
-# PASEK STATYSTYK GÓRNY
+# PASEK STATYSTYK
 # =================
 
 def pokaz_statystyki(dane, stat_label):
@@ -66,18 +66,19 @@ def pokaz_statystyki(dane, stat_label):
     liczba = len(dane)
 
     sredni_wiek = "-"
+    sredni_bmi = "-"
+    cuk_proc = "-"
+    nad_proc = "-"
+
     if "wiek" in dane.columns:
         sredni_wiek = round(dane["wiek"].mean(), 1)
 
-    sredni_bmi = "-"
     if "BMI" in dane.columns:
         sredni_bmi = round(dane["BMI"].mean(), 1)
 
-    cuk_proc = "-"
     if "cukrzyca" in dane.columns:
         cuk_proc = round((dane["cukrzyca"] == "tak").mean() * 100, 1)
 
-    nad_proc = "-"
     if "nadcisnienie" in dane.columns:
         nad_proc = round((dane["nadcisnienie"] == "tak").mean() * 100, 1)
 
@@ -93,6 +94,42 @@ def pokaz_statystyki(dane, stat_label):
 
 
 # =================
+# WYBÓR GRUP DO TESTU
+# =================
+
+def przygotuj_grupy(dane, typ):
+
+    if typ == "BMI — Płeć":
+        g1 = dane[dane["plec"] == "K"]["BMI"].dropna()
+        g2 = dane[dane["plec"] == "M"]["BMI"].dropna()
+        nazwa1, nazwa2 = "Kobiety", "Mężczyźni"
+        ylabel = "BMI"
+
+    elif typ == "BMI — Cukrzyca":
+        g1 = dane[dane["cukrzyca"] == "tak"]["BMI"].dropna()
+        g2 = dane[dane["cukrzyca"] == "nie"]["BMI"].dropna()
+        nazwa1, nazwa2 = "Cukrzyca", "Brak"
+        ylabel = "BMI"
+
+    elif typ == "BMI — Nadciśnienie":
+        g1 = dane[dane["nadcisnienie"] == "tak"]["BMI"].dropna()
+        g2 = dane[dane["nadcisnienie"] == "nie"]["BMI"].dropna()
+        nazwa1, nazwa2 = "Nadciśnienie", "Brak"
+        ylabel = "BMI"
+
+    elif typ == "Wiek — Płeć":
+        g1 = dane[dane["plec"] == "K"]["wiek"].dropna()
+        g2 = dane[dane["plec"] == "M"]["wiek"].dropna()
+        nazwa1, nazwa2 = "Kobiety", "Mężczyźni"
+        ylabel = "Wiek"
+
+    else:
+        return None
+
+    return g1, g2, nazwa1, nazwa2, ylabel
+
+
+# =================
 # TEST T-STUDENTA
 # =================
 
@@ -101,6 +138,7 @@ def rysuj_test(plot_stat, wynik_stat, wybor_test):
     dane = get_dane()
 
     if dane is None:
+        messagebox.showwarning("Brak danych", "Najpierw wczytaj dane")
         return
 
     for widget in plot_stat.winfo_children():
@@ -108,47 +146,15 @@ def rysuj_test(plot_stat, wynik_stat, wybor_test):
 
     typ = wybor_test.get()
 
-    if typ == "BMI — Płeć":
+    wynik = przygotuj_grupy(dane, typ)
 
-        g1 = dane[dane["plec"] == "K"]["BMI"].dropna()
-        g2 = dane[dane["plec"] == "M"]["BMI"].dropna()
-
-        nazwa1 = "Kobiety"
-        nazwa2 = "Mężczyźni"
-        ylabel = "BMI"
-
-    elif typ == "BMI — Cukrzyca":
-
-        g1 = dane[dane["cukrzyca"] == "tak"]["BMI"].dropna()
-        g2 = dane[dane["cukrzyca"] == "nie"]["BMI"].dropna()
-
-        nazwa1 = "Cukrzyca"
-        nazwa2 = "Brak"
-        ylabel = "BMI"
-
-    elif typ == "BMI — Nadciśnienie":
-
-        g1 = dane[dane["nadcisnienie"] == "tak"]["BMI"].dropna()
-        g2 = dane[dane["nadcisnienie"] == "nie"]["BMI"].dropna()
-
-        nazwa1 = "Nadciśnienie"
-        nazwa2 = "Brak"
-        ylabel = "BMI"
-
-    elif typ == "Wiek — Płeć":
-
-        g1 = dane[dane["plec"] == "K"]["wiek"].dropna()
-        g2 = dane[dane["plec"] == "M"]["wiek"].dropna()
-
-        nazwa1 = "Kobiety"
-        nazwa2 = "Mężczyźni"
-        ylabel = "Wiek"
-
-    else:
+    if wynik is None:
         return
 
+    g1, g2, nazwa1, nazwa2, ylabel = wynik
+
     if len(g1) < 2 or len(g2) < 2:
-        wynik_stat.config(text="Za mało danych")
+        wynik_stat.config(text="Za mało danych do testu")
         return
 
     t, p = ttest_ind(g1, g2, equal_var=False)
@@ -168,7 +174,6 @@ def rysuj_test(plot_stat, wynik_stat, wybor_test):
 
     ax.set_ylabel(ylabel)
     ax.set_title(typ)
-
     ax.grid(alpha=0.3)
 
     canvas = FigureCanvasTkAgg(fig, master=plot_stat)

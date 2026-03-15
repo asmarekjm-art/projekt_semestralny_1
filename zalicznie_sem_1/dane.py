@@ -26,19 +26,26 @@ def get_dane():
 
 
 # =================
-# FUNKCJA NADCIŚNIENIA
+# OBLICZANIE NADCIŚNIENIA
 # =================
 
 def nadcisnienie(val):
 
-    try:
-        if isinstance(val, str):
-            s, d = val.split("/")
-            return "tak" if int(s) >= 140 or int(d) >= 90 else "nie"
-    except:
-        pass
+    if not isinstance(val, str):
+        return "nie"
 
-    return "nie"
+    try:
+        s, d = val.split("/")
+        s = int(s)
+        d = int(d)
+
+        if s >= 140 or d >= 90:
+            return "tak"
+        else:
+            return "nie"
+
+    except Exception:
+        return "nie"
 
 
 # =================
@@ -61,16 +68,23 @@ def wczytaj_dane(pokaz, pokaz_statystyki):
         df = pd.read_csv(path, sep=None, engine="python")
         df_filtered = None
 
+        # =================
         # BMI
-        if "waga" in df.columns and "wzrost" in df.columns:
+        # =================
+
+        if {"waga", "wzrost"}.issubset(df.columns):
 
             df["BMI"] = df["waga"] / ((df["wzrost"] / 100) ** 2)
+
             df["BMI"] = df["BMI"].replace(
                 [float("inf"), -float("inf")],
                 None
             )
 
-        # nadciśnienie
+        # =================
+        # NADCIŚNIENIE
+        # =================
+
         if "cisnienie" in df.columns:
 
             df["nadcisnienie"] = df["cisnienie"].apply(
@@ -80,10 +94,7 @@ def wczytaj_dane(pokaz, pokaz_statystyki):
         pokaz(df)
         pokaz_statystyki(df)
 
-        messagebox.showinfo(
-            "Sukces",
-            "Dane zostały wczytane"
-        )
+        log("Dane zostały wczytane")        )
 
     except Exception as e:
 
@@ -106,11 +117,20 @@ def sortuj_kolumne(col, reverse, pokaz):
     if dane is None:
         return
 
-    dane = dane.sort_values(
-        by=col,
-        ascending=not reverse,
-        key=lambda x: x.astype(str)
-    )
+    try:
+
+        dane = dane.sort_values(
+            by=col,
+            ascending=not reverse
+        )
+
+    except Exception:
+
+        dane = dane.sort_values(
+            by=col,
+            ascending=not reverse,
+            key=lambda x: x.astype(str)
+        )
 
     df_filtered = dane
 
@@ -146,7 +166,10 @@ def filtruj_dane(
 
     dane = df.copy()
 
-    # płeć
+    # =================
+    # FILTR PŁCI
+    # =================
+
     plec = []
 
     if var_k.get():
@@ -155,21 +178,20 @@ def filtruj_dane(
     if var_m.get():
         plec.append("M")
 
-    if plec:
+    if plec and "plec" in dane.columns:
         dane = dane[dane["plec"].isin(plec)]
 
-    # wiek
+    # =================
+    # FILTR WIEKU
+    # =================
+
     try:
 
         if entry_min.get():
-            dane = dane[
-                dane["wiek"] >= int(entry_min.get())
-            ]
+            dane = dane[dane["wiek"] >= int(entry_min.get())]
 
         if entry_max.get():
-            dane = dane[
-                dane["wiek"] <= int(entry_max.get())
-            ]
+            dane = dane[dane["wiek"] <= int(entry_max.get())]
 
     except ValueError:
 
@@ -179,7 +201,10 @@ def filtruj_dane(
         )
         return
 
-    # cukrzyca
+    # =================
+    # FILTR CUKRZYCY
+    # =================
+
     cuk = []
 
     if var_cuk_tak.get():
@@ -188,12 +213,13 @@ def filtruj_dane(
     if var_cuk_nie.get():
         cuk.append("nie")
 
-    if cuk:
-        dane = dane[
-            dane["cukrzyca"].isin(cuk)
-        ]
+    if cuk and "cukrzyca" in dane.columns:
+        dane = dane[dane["cukrzyca"].isin(cuk)]
 
-    # nadciśnienie
+    # =================
+    # FILTR NADCIŚNIENIA
+    # =================
+
     nad = []
 
     if var_nad_tak.get():
@@ -203,10 +229,7 @@ def filtruj_dane(
         nad.append("nie")
 
     if nad and "nadcisnienie" in dane.columns:
-
-        dane = dane[
-            dane["nadcisnienie"].isin(nad)
-        ]
+        dane = dane[dane["nadcisnienie"].isin(nad)]
 
     df_filtered = dane
 
@@ -228,7 +251,6 @@ def wyszukaj(search_entry, pokaz):
     tekst = search_entry.get().lower()
 
     if not tekst:
-
         pokaz(dane)
         return
 
@@ -256,12 +278,13 @@ def reset_filtry(
     pokaz_stat
 ):
 
-    global df_filtered, df
+    global df_filtered
 
     var_k.set(True)
     var_m.set(True)
 
     var_cuk_tak.set(True)
+    var_cuk_nie.set(True)
     var_cuk_nie.set(True)
 
     var_nad_tak.set(True)
@@ -273,6 +296,5 @@ def reset_filtry(
     df_filtered = None
 
     if df is not None:
-
         pokaz(df)
         pokaz_stat(df)
