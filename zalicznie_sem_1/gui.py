@@ -118,55 +118,112 @@ var_nad_nie = ttkb.BooleanVar(value=True)
 ramka_filtry = ttk.LabelFrame(tab_dane, text="Filtry danych", padding=10)
 ramka_filtry.pack(fill="x", padx=10, pady=10)
 
-ramka_filtry.columnconfigure(0, weight=1)
-ramka_filtry.columnconfigure(1, weight=1)
+# siatka
+for i in range(4):
+    ramka_filtry.columnconfigure(i, weight=1)
 
-# płeć
+# -----------------
+# PŁEĆ
+# -----------------
 
 sekcja_plec = ttk.LabelFrame(ramka_filtry, text="Płeć")
-sekcja_plec.grid(row=0, column=0, padx=5, pady=5)
+sekcja_plec.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
 
 ttk.Checkbutton(sekcja_plec, text="Kobiety", variable=var_k).pack(anchor="w")
 ttk.Checkbutton(sekcja_plec, text="Mężczyźni", variable=var_m).pack(anchor="w")
 
-# wiek
+
+# -----------------
+# WIEK
+# -----------------
 
 sekcja_wiek = ttk.LabelFrame(ramka_filtry, text="Wiek")
-sekcja_wiek.grid(row=0, column=1, padx=5, pady=5)
+sekcja_wiek.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
 
 wiek_frame = ttk.Frame(sekcja_wiek)
 wiek_frame.pack()
 
-ttk.Label(wiek_frame, text="Od").grid(row=0,column=0)
+ttk.Label(wiek_frame,text="Od").grid(row=0,column=0)
 
-entry_min = ttk.Entry(wiek_frame,width=8)
+entry_min = ttk.Entry(wiek_frame,width=6)
 entry_min.grid(row=0,column=1,padx=5)
 
-ttk.Label(wiek_frame, text="Do").grid(row=0,column=2)
+ttk.Label(wiek_frame,text="Do").grid(row=0,column=2)
 
-entry_max = ttk.Entry(wiek_frame,width=8)
+entry_max = ttk.Entry(wiek_frame,width=6)
 entry_max.grid(row=0,column=3,padx=5)
 
-# cukrzyca
+
+# -----------------
+# BMI
+# -----------------
+
+sekcja_bmi = ttk.LabelFrame(ramka_filtry, text="BMI")
+sekcja_bmi.grid(row=0, column=2, padx=5, pady=5, sticky="nsew")
+
+bmi_frame = ttk.Frame(sekcja_bmi)
+bmi_frame.pack()
+
+ttk.Label(bmi_frame,text="Od").grid(row=0,column=0)
+
+entry_bmi_min = ttk.Entry(bmi_frame,width=6)
+entry_bmi_min.grid(row=0,column=1,padx=5)
+
+ttk.Label(bmi_frame,text="Do").grid(row=0,column=2)
+
+entry_bmi_max = ttk.Entry(bmi_frame,width=6)
+entry_bmi_max.grid(row=0,column=3,padx=5)
+
+
+# -----------------
+# CHOLESTEROL
+# -----------------
+
+sekcja_chol = ttk.LabelFrame(ramka_filtry, text="Cholesterol")
+sekcja_chol.grid(row=0, column=3, padx=5, pady=5, sticky="nsew")
+
+chol_frame = ttk.Frame(sekcja_chol)
+chol_frame.pack()
+
+ttk.Label(chol_frame,text="Od").grid(row=0,column=0)
+
+entry_chol_min = ttk.Entry(chol_frame,width=6)
+entry_chol_min.grid(row=0,column=1,padx=5)
+
+ttk.Label(chol_frame,text="Do").grid(row=0,column=2)
+
+entry_chol_max = ttk.Entry(chol_frame,width=6)
+entry_chol_max.grid(row=0,column=3,padx=5)
+
+
+# -----------------
+# CUKRZYCA
+# -----------------
 
 sekcja_cuk = ttk.LabelFrame(ramka_filtry, text="Cukrzyca")
-sekcja_cuk.grid(row=1,column=0,padx=5,pady=5)
+sekcja_cuk.grid(row=1, column=0, padx=5, pady=5)
 
 ttk.Checkbutton(sekcja_cuk,text="Tak",variable=var_cuk_tak).pack(anchor="w")
 ttk.Checkbutton(sekcja_cuk,text="Nie",variable=var_cuk_nie).pack(anchor="w")
 
-# nadciśnienie
+
+# -----------------
+# NADCIŚNIENIE
+# -----------------
 
 sekcja_nad = ttk.LabelFrame(ramka_filtry, text="Nadciśnienie")
-sekcja_nad.grid(row=1,column=1,padx=5,pady=5)
+sekcja_nad.grid(row=1, column=1, padx=5, pady=5)
 
 ttk.Checkbutton(sekcja_nad,text="Tak",variable=var_nad_tak).pack(anchor="w")
 ttk.Checkbutton(sekcja_nad,text="Nie",variable=var_nad_nie).pack(anchor="w")
 
-# przyciski filtrów
+
+# -----------------
+# PRZYCISKI
+# -----------------
 
 frame_btn = ttk.Frame(ramka_filtry)
-frame_btn.grid(row=2,column=0,columnspan=2,pady=10)
+frame_btn.grid(row=2,column=0,columnspan=4,pady=10)
 
 ttk.Button(
     frame_btn,
@@ -193,8 +250,6 @@ ttk.Button(
         lambda d: pokaz_statystyki(d, stat_label)
     )
 ).pack(side="left",padx=5)
-
-
 # =================
 # TABELA
 # =================
@@ -301,7 +356,7 @@ command=lambda: generuj_wykres(wykres_leki_cukrzyca)).pack(side="left", padx=5)
 frame_log = ttk.LabelFrame(okno,text="Logi programu")
 frame_log.pack(fill="x",padx=10,pady=5)
 
-log_box = ttkb.Text(frame_log,height=6)
+log_box = ttkb.Text(frame_log,height=10)
 
 scroll_log = ttk.Scrollbar(frame_log,command=log_box.yview)
 log_box.configure(yscrollcommand=scroll_log.set)
