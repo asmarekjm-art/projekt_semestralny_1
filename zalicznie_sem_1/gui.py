@@ -13,7 +13,8 @@ from wykresy import (
     wykres_cukrzyca_typ_kolowy,
     wykres_leki_cukrzyca
 )
-from eksport import eksport_csv, eksport_pdf, eksport_png
+
+from eksport import eksport_csv, eksport_pdf, eksport_png, raport_pdf
 
 import eksport
 import dane
@@ -122,6 +123,12 @@ ttk.Button(
     command=eksport_csv
 ).pack(side="left", padx=5)
 
+ttk.Button(
+    toolbar,
+    text="Raport PDF",
+    command=raport_pdf
+).pack(side="left", padx=5)
+
 
 # =================
 # FILTRY
@@ -133,11 +140,17 @@ ramka_filtry.pack(fill="x", padx=10, pady=10)
 ramka_filtry.columnconfigure(0, weight=1)
 ramka_filtry.columnconfigure(1, weight=1)
 
+ttk.Label(
+    ramka_filtry,
+    text="Wybierz kryteria filtrowania danych",
+    font=("Arial", 10, "bold")
+).grid(row=0, column=0, columnspan=2, pady=5)
+
 
 # PŁEĆ
 
 sekcja_plec = ttk.LabelFrame(ramka_filtry, text="Płeć")
-sekcja_plec.grid(row=0, column=0, padx=5, pady=5)
+sekcja_plec.grid(row=1, column=0, padx=5, pady=5)
 
 ttk.Checkbutton(sekcja_plec, text="Kobiety", variable=var_k).pack(anchor="w")
 ttk.Checkbutton(sekcja_plec, text="Mężczyźni", variable=var_m).pack(anchor="w")
@@ -146,7 +159,7 @@ ttk.Checkbutton(sekcja_plec, text="Mężczyźni", variable=var_m).pack(anchor="w
 # WIEK
 
 sekcja_wiek = ttk.LabelFrame(ramka_filtry, text="Wiek")
-sekcja_wiek.grid(row=0, column=1, padx=5, pady=5)
+sekcja_wiek.grid(row=1, column=1, padx=5, pady=5)
 
 wiek_frame = ttk.Frame(sekcja_wiek)
 wiek_frame.pack()
@@ -165,7 +178,7 @@ entry_max.grid(row=0, column=3, padx=5)
 # CUKRZYCA
 
 sekcja_cuk = ttk.LabelFrame(ramka_filtry, text="Cukrzyca")
-sekcja_cuk.grid(row=1, column=0, padx=5, pady=5)
+sekcja_cuk.grid(row=2, column=0, padx=5, pady=5)
 
 ttk.Checkbutton(sekcja_cuk, text="Tak", variable=var_cuk_tak).pack(anchor="w")
 ttk.Checkbutton(sekcja_cuk, text="Nie", variable=var_cuk_nie).pack(anchor="w")
@@ -174,7 +187,7 @@ ttk.Checkbutton(sekcja_cuk, text="Nie", variable=var_cuk_nie).pack(anchor="w")
 # NADCIŚNIENIE
 
 sekcja_nad = ttk.LabelFrame(ramka_filtry, text="Nadciśnienie")
-sekcja_nad.grid(row=1, column=1, padx=5, pady=5)
+sekcja_nad.grid(row=2, column=1, padx=5, pady=5)
 
 ttk.Checkbutton(sekcja_nad, text="Tak", variable=var_nad_tak).pack(anchor="w")
 ttk.Checkbutton(sekcja_nad, text="Nie", variable=var_nad_nie).pack(anchor="w")
@@ -183,7 +196,7 @@ ttk.Checkbutton(sekcja_nad, text="Nie", variable=var_nad_nie).pack(anchor="w")
 # PRZYCISKI FILTRÓW
 
 frame_btn = ttk.Frame(ramka_filtry)
-frame_btn.grid(row=2, column=0, columnspan=2, pady=5)
+frame_btn.grid(row=3, column=0, columnspan=2, pady=10)
 
 ttk.Button(
     frame_btn,
@@ -196,7 +209,7 @@ ttk.Button(
         pokaz,
         lambda d: pokaz_statystyki(d, stat_label)
     )
-).pack(side="left", padx=3)
+).pack(side="left", padx=5)
 
 ttk.Button(
     frame_btn,
@@ -209,7 +222,7 @@ ttk.Button(
         pokaz,
         lambda d: pokaz_statystyki(d, stat_label)
     )
-).pack(side="left", padx=3)
+).pack(side="left", padx=5)
 
 
 # =================
