@@ -7,9 +7,8 @@ from tkinter import filedialog
 
 pd.options.mode.chained_assignment = None
 
-
 # =================
-# ZMIENNE GLOBALNE
+# GLOBALNE
 # =================
 
 df = pd.DataFrame()
@@ -17,7 +16,7 @@ df_filtered = None
 
 
 # =================
-# LOG (nadpisywany z gui)
+# LOG
 # =================
 
 def log(msg, level="INFO"):
@@ -25,170 +24,83 @@ def log(msg, level="INFO"):
 
 
 # =================
-# POBIERANIE DANYCH
+# GET DATA
 # =================
 
 def get_dane():
-    """Zwraca dane po filtrach lub pełną bazę."""
     return df_filtered if df_filtered is not None else df
 
 
 # =================
-# ANALIZA CIŚNIENIA
+# NADCIŚNIENIE
 # =================
 
 def nadcisnienie(val):
-
     if not isinstance(val, str):
         return "nie"
 
     try:
-
         s, d = val.split("/")
-        s = int(s)
-        d = int(d)
-
-        if s >= 140 or d >= 90:
-            return "tak"
-
-        return "nie"
-
-    except Exception:
+        s, d = int(s), int(d)
+        return "tak" if s >= 140 or d >= 90 else "nie"
+    except:
         return "nie"
 
 
 # =================
-# WCZYTYWANIE CSV
+# WCZYTYWANIE
 # =================
 
-def wczytaj_dane(pokaz, pokaz_statystyki):
+def wczytaj_dane(pokaz, pokaz_stat):
 
     global df, df_filtered
 
-    log("Otwieranie okna wyboru pliku")
-
-    path = filedialog.askopenfilename(
-        filetypes=[("CSV files", "*.csv")]
-    )
+    path = filedialog.askopenfilename(filetypes=[("CSV", "*.csv")])
 
     if not path:
         log("Nie wybrano pliku")
         return
 
-    log(f"Wybrany plik: {path}")
-
     try:
-
-        df = pd.read_csv(
-            path,
-            sep=None,
-            engine="python"
-        )
-
+        df = pd.read_csv(path, sep=None, engine="python")
         df_filtered = None
+
+        # ujednolicenie kolumn
+        df.columns = df.columns.str.lower()
 
         log(f"Wczytano {len(df)} rekordów")
         log(f"Kolumny: {list(df.columns)}")
 
-        # =================
-        # KONWERSJA LICZB
-        # =================
-
+        # konwersja liczb
         for col in ["wiek", "waga", "wzrost"]:
-
             if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
 
-                df[col] = pd.to_numeric(
-                    df[col],
-                    errors="coerce"
-                )
-
-        # =================
         # BMI
-        # =================
-
         if {"waga", "wzrost"}.issubset(df.columns):
+            df["bmi"] = df["waga"] / ((df["wzrost"] / 100) ** 2)
 
-            log("Obliczanie BMI")
-
-            df["BMI"] = df["waga"] / ((df["wzrost"] / 100) ** 2)
-
-            df["BMI"] = df["BMI"].replace(
-                [float("inf"), -float("inf")],
-                None
-            )
-
-            log("Kolumna BMI została dodana")
-
-        else:
-
-            log("Brak kolumn waga/wzrost — BMI pominięte")
-
-        # =================
-        # NADCIŚNIENIE
-        # =================
-
+        # nadciśnienie
         if "cisnienie" in df.columns:
-
-            log("Analiza nadciśnienia")
-
             df["nadcisnienie"] = df["cisnienie"].apply(nadcisnienie)
 
-            log("Kolumna nadcisnienie została dodana")
-
-        else:
-
-            log("Brak kolumny cisnienie")
+        # normalizacja cukrzycy 🔥
+        if "cukrzyca_typ" in df.columns:
+            df["cukrzyca_typ"] = (
+                df["cukrzyca_typ"]
+                .astype(str)
+                .str.lower()
+                .str.replace(" ", "_")
+            )
 
         pokaz(df)
-        pokaz_statystyki(df)
+        pokaz_stat(df)
 
-        log("Dane zostały wyświetlone")
+        log("Dane wczytane OK")
 
     except Exception as e:
-
-        log("Błąd wczytywania danych", "ERROR")
+        log("Błąd wczytywania", "ERROR")
         log(str(e), "ERROR")
-
-
-# =================
-# SORTOWANIE
-# =================
-
-def sortuj_kolumne(col, reverse, pokaz):
-
-    global df_filtered
-
-    dane = get_dane()
-
-    if dane is None or dane.empty:
-        log("Sortowanie przerwane – brak danych")
-        return
-
-    log(f"Sortowanie kolumny: {col}")
-
-    try:
-
-        dane = dane.sort_values(
-            by=col,
-            ascending=not reverse
-        )
-
-    except Exception:
-
-        log("Sortowanie jako tekst")
-
-        dane = dane.sort_values(
-            by=col,
-            ascending=not reverse,
-            key=lambda x: x.astype(str)
-        )
-
-    df_filtered = dane
-
-    log("Sortowanie zakończone")
-
-    pokaz(dane)
 
 
 # =================
@@ -196,112 +108,98 @@ def sortuj_kolumne(col, reverse, pokaz):
 # =================
 
 def filtruj_dane(
-    var_k,
-    var_m,
-    var_cuk_tak,
-    var_cuk_nie,
-    var_nad_tak,
-    var_nad_nie,
-    entry_min,
-    entry_max,
+    var_k, var_m,
+    var_cuk_typ1, var_cuk_typ2, var_cuk_brak,
+    var_nad_tak, var_nad_nie,
+    entry_min, entry_max,
     pokaz,
-    pokaz_statystyki
+    callback_stat,
+    entry_bmi_min=None, entry_bmi_max=None
 ):
-
     global df_filtered
 
-    if df.empty:
-        log("Filtrowanie przerwane – brak danych")
+    dane = get_dane().copy()
+
+    if dane is None or dane.empty:
+        log("Brak danych")
         return
 
-    log("Rozpoczęcie filtrowania")
-
-    dane = df.copy()
-
     # =================
-    # FILTR PŁCI
+    # WIEK
     # =================
-
-    plec = []
-
-    if var_k.get():
-        plec.append("K")
-
-    if var_m.get():
-        plec.append("M")
-
-    if plec and "plec" in dane.columns:
-
-        dane = dane[dane["plec"].isin(plec)]
-
-        log(f"Filtr płci: {plec}")
-
-    # =================
-    # FILTR WIEKU
-    # =================
-
     if "wiek" in dane.columns:
+        if entry_min.get().isdigit():
+            dane = dane[dane["wiek"] >= int(entry_min.get())]
 
+        if entry_max.get().isdigit():
+            dane = dane[dane["wiek"] <= int(entry_max.get())]
+
+    # =================
+    # BMI
+    # =================
+    if "bmi" in dane.columns:
         try:
+            if entry_bmi_min and entry_bmi_min.get():
+                dane = dane[dane["bmi"] >= float(entry_bmi_min.get())]
 
-            min_wiek = entry_min.get().strip()
-            max_wiek = entry_max.get().strip()
-
-            if min_wiek:
-                dane = dane[dane["wiek"] >= int(min_wiek)]
-                log(f"Wiek od: {min_wiek}")
-
-            if max_wiek:
-                dane = dane[dane["wiek"] <= int(max_wiek)]
-                log(f"Wiek do: {max_wiek}")
-
-        except ValueError:
-
-            log("Błąd – wiek musi być liczbą", "ERROR")
-            return
+            if entry_bmi_max and entry_bmi_max.get():
+                dane = dane[dane["bmi"] <= float(entry_bmi_max.get())]
+        except:
+            log("Błąd filtrowania BMI", "ERROR")
 
     # =================
-    # FILTR CUKRZYCY
+    # PŁEĆ
     # =================
+    if "plec" in dane.columns:
+        plec = []
+        if var_k.get():
+            plec.append("K")
+        if var_m.get():
+            plec.append("M")
 
-    cuk = []
-
-    if var_cuk_tak.get():
-        cuk.append("tak")
-
-    if var_cuk_nie.get():
-        cuk.append("nie")
-
-    if cuk and "cukrzyca" in dane.columns:
-
-        dane = dane[dane["cukrzyca"].isin(cuk)]
-
-        log(f"Filtr cukrzycy: {cuk}")
+        if plec:
+            dane = dane[dane["plec"].isin(plec)]
 
     # =================
-    # FILTR NADCIŚNIENIA
+    # CUKRZYCA
     # =================
+    if "cukrzyca_typ" in dane.columns:
+        typy = []
 
-    nad = []
+        if var_cuk_typ1.get():
+            typy.append("typ_1")
 
-    if var_nad_tak.get():
-        nad.append("tak")
+        if var_cuk_typ2.get():
+            typy.append("typ_2")
 
-    if var_nad_nie.get():
-        nad.append("nie")
+        if var_cuk_brak.get():
+            typy.append("brak")
 
-    if nad and "nadcisnienie" in dane.columns:
+        if typy:
+            dane = dane[dane["cukrzyca_typ"].isin(typy)]
 
-        dane = dane[dane["nadcisnienie"].isin(nad)]
+    # =================
+    # NADCIŚNIENIE
+    # =================
+    if "nadcisnienie" in dane.columns:
+        nad = []
 
-        log(f"Filtr nadciśnienia: {nad}")
+        if var_nad_tak.get():
+            nad.append("tak")
 
+        if var_nad_nie.get():
+            nad.append("nie")
+
+        if nad:
+            dane = dane[dane["nadcisnienie"].isin(nad)]
+
+    # zapis
     df_filtered = dane
 
-    log(f"Wynik filtrowania: {len(dane)} rekordów")
+    log(f"Filtrowanie -> {len(dane)} rekordów")
 
     pokaz(dane)
-    pokaz_statystyki(dane)
+    callback_stat(dane)
 
 
 # =================
@@ -313,16 +211,13 @@ def wyszukaj(search_entry, pokaz):
     dane = get_dane()
 
     if dane is None or dane.empty:
-        log("Wyszukiwanie przerwane – brak danych")
         return
 
-    tekst = search_entry.get().strip().lower()
+    tekst = search_entry.get().lower()
 
     if not tekst:
         pokaz(dane)
         return
-
-    log(f"Wyszukiwanie: {tekst}")
 
     mask = dane.astype(str).apply(
         lambda col: col.str.lower().str.contains(tekst, na=False)
@@ -330,33 +225,31 @@ def wyszukaj(search_entry, pokaz):
 
     wynik = dane[mask]
 
-    log(f"Znaleziono {len(wynik)} rekordów")
+    log(f"Szukaj -> {len(wynik)}")
 
     pokaz(wynik)
 
 
 # =================
-# RESET FILTRÓW
+# RESET
 # =================
 
 def reset_filtry(
     var_k, var_m,
-    var_cuk_tak, var_cuk_nie,
+    var_cuk_typ1, var_cuk_typ2, var_cuk_brak,
     var_nad_tak, var_nad_nie,
     entry_min, entry_max,
     pokaz,
     pokaz_stat
 ):
-
     global df_filtered
-
-    log("Reset filtrów")
 
     var_k.set(True)
     var_m.set(True)
 
-    var_cuk_tak.set(True)
-    var_cuk_nie.set(True)
+    var_cuk_typ1.set(True)
+    var_cuk_typ2.set(True)
+    var_cuk_brak.set(True)
 
     var_nad_tak.set(True)
     var_nad_nie.set(True)
@@ -367,8 +260,7 @@ def reset_filtry(
     df_filtered = None
 
     if not df.empty:
-
         pokaz(df)
         pokaz_stat(df)
 
-        log("Przywrócono pełny zbiór danych")
+        log("Reset OK")

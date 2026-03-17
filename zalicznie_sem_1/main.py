@@ -1,3 +1,2 @@
 from gui import okno
-
-okno.mainloop()
+okno = okno.mainloop()

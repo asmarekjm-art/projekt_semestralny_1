@@ -2,227 +2,173 @@
 # IMPORTY
 # =================
 
-from scipy.stats import ttest_ind
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-
+import pandas as pd
 from dane import get_dane
 
-
-# =================
-# LOG (nadpisywany z gui)
-# =================
-
-def log(msg, level="INFO"):
-    print(f"[{level}] {msg}")
+log = print
 
 
 # =================
 # STATYSTYKI OPISOWE
 # =================
 
-def statystyki_opisowe(pokaz):
-
-    dane = get_dane()
-
-    if dane is None or dane.empty:
-        log("Statystyki opisowe przerwane – brak danych", "ERROR")
-        return
-
-    num = dane.select_dtypes(include="number")
-
-    if num.empty:
-        log("Brak danych liczbowych do statystyk", "ERROR")
-        return
-
-    opis = num.describe().T
-
-    # nazwy wierszy
-    opis = opis.rename(index={
-        "wiek": "Wiek pacjentów [lata]",
-        "waga": "Masa ciała [kg]",
-        "wzrost": "Wzrost [cm]",
-        "BMI": "BMI (Body Mass Index)"
-    })
-
-    # nazwy kolumn
-    opis = opis.rename(columns={
-        "count": "Liczba obserwacji",
-        "mean": "Średnia",
-        "std": "Odchylenie std",
-        "min": "Minimum",
-        "25%": "1 kwartyl",
-        "50%": "Mediana",
-        "75%": "3 kwartyl",
-        "max": "Maximum"
-    })
-
-    log("Wyświetlanie statystyk opisowych")
-
-    pokaz(opis.round(2))
-
-
-# =================
-# PASEK STATYSTYK
-# =================
-
-def pokaz_statystyki(dane, stat_label):
-
-    if dane is None or dane.empty:
-        stat_label.config(text="Brak danych")
-        return
-
-    liczba = len(dane)
-
-    sredni_wiek = "-"
-    sredni_bmi = "-"
-    cuk_proc = "-"
-    nad_proc = "-"
-
-    if "wiek" in dane.columns:
-        sredni_wiek = round(dane["wiek"].mean(), 1)
-
-    if "BMI" in dane.columns:
-        sredni_bmi = round(dane["BMI"].mean(), 1)
-
-    if "cukrzyca" in dane.columns:
-        cuk_proc = round((dane["cukrzyca"] == "tak").mean() * 100, 1)
-
-    if "nadcisnienie" in dane.columns:
-        nad_proc = round((dane["nadcisnienie"] == "tak").mean() * 100, 1)
-
-    tekst = (
-        f"Pacjenci: {liczba} | "
-        f"Średni wiek: {sredni_wiek} | "
-        f"Średni BMI: {sredni_bmi} | "
-        f"Cukrzyca: {cuk_proc}% | "
-        f"Nadciśnienie: {nad_proc}%"
-    )
-
-    stat_label.config(text=tekst)
-
-
-# =================
-# PRZYGOTOWANIE GRUP
-# =================
-
-def przygotuj_grupy(dane, typ):
-
+def statystyki_opisowe(df=None):
     try:
+        if df is None:
+            df = get_dane()
 
-        if typ == "BMI — Płeć":
-
-            g1 = dane[dane["plec"] == "K"]["BMI"].dropna()
-            g2 = dane[dane["plec"] == "M"]["BMI"].dropna()
-
-            nazwa1, nazwa2 = "Kobiety", "Mężczyźni"
-            ylabel = "BMI"
-
-        elif typ == "BMI — Cukrzyca":
-
-            g1 = dane[dane["cukrzyca"] == "tak"]["BMI"].dropna()
-            g2 = dane[dane["cukrzyca"] == "nie"]["BMI"].dropna()
-
-            nazwa1, nazwa2 = "Cukrzyca", "Brak"
-            ylabel = "BMI"
-
-        elif typ == "BMI — Nadciśnienie":
-
-            g1 = dane[dane["nadcisnienie"] == "tak"]["BMI"].dropna()
-            g2 = dane[dane["nadcisnienie"] == "nie"]["BMI"].dropna()
-
-            nazwa1, nazwa2 = "Nadciśnienie", "Brak"
-            ylabel = "BMI"
-
-        elif typ == "Wiek — Płeć":
-
-            g1 = dane[dane["plec"] == "K"]["wiek"].dropna()
-            g2 = dane[dane["plec"] == "M"]["wiek"].dropna()
-
-            nazwa1, nazwa2 = "Kobiety", "Mężczyźni"
-            ylabel = "Wiek"
-
-        else:
+        if df is None or df.empty:
+            log("Brak danych do statystyk", "ERROR")
             return None
 
-    except KeyError:
+        num = df.select_dtypes(include="number")
 
-        log("Brak wymaganych kolumn do testu statystycznego", "ERROR")
+        if num.empty:
+            log("Brak danych liczbowych", "WARNING")
+            return None
+
+        stats = num.describe().round(2)
+
+        log("Statystyki opisowe OK", "SUCCESS")
+        return stats
+
+    except Exception as e:
+        log(f"Błąd statystyk: {e}", "ERROR")
         return None
 
-    return g1, g2, nazwa1, nazwa2, ylabel
+
+# =================
+# PASEK STATYSTYK (GUI)
+# =================
+
+def pokaz_statystyki(df, label):
+
+    if df is None or df.empty:
+        label.config(text="Brak danych")
+        return
+
+    try:
+        liczba = len(df)
+
+        wiek = "-"
+        bmi = "-"
+        cuk1 = "-"
+        cuk2 = "-"
+        nad = "-"
+
+        # wiek
+        if "wiek" in df.columns:
+            wiek = round(df["wiek"].mean(), 1)
+
+        # BMI (spójność z dane.py!)
+        if "bmi" in df.columns:
+            bmi = round(df["bmi"].mean(), 1)
+
+        # cukrzyca
+        if "cukrzyca_typ" in df.columns:
+            total = len(df)
+
+            cuk1 = round((df["cukrzyca_typ"] == "typ_1").sum() / total * 100, 1)
+            cuk2 = round((df["cukrzyca_typ"] == "typ_2").sum() / total * 100, 1)
+
+        # nadciśnienie
+        if "nadcisnienie" in df.columns:
+            nad = round((df["nadcisnienie"] == "tak").mean() * 100, 1)
+
+        tekst = (
+            f"Pacjenci: {liczba}   |   "
+            f"Śr. wiek: {wiek}   |   "
+            f"Śr. BMI: {bmi}   |   "
+            f"T1: {cuk1}%   |   "
+            f"T2: {cuk2}%   |   "
+            f"Nadciśnienie: {nad}%"
+        )
+
+        label.config(text=tekst)
+
+        log("Statystyki GUI OK", "INFO")
+
+    except Exception as e:
+        label.config(text="Błąd statystyk")
+        log(f"Błąd statystyk: {e}", "ERROR")
 
 
 # =================
-# TEST T-STUDENTA
+# STATYSTYKI ROZSZERZONE
 # =================
 
-def rysuj_test(plot_stat, wynik_stat, wybor_test):
+def statystyki_rozszerzone(df=None):
+    try:
+        if df is None:
+            df = get_dane()
 
-    dane = get_dane()
+        if df is None or df.empty:
+            log("Brak danych", "ERROR")
+            return {}
 
-    if dane is None or dane.empty:
-        log("Test statystyczny przerwany – brak danych", "ERROR")
-        return
+        wyniki = {}
 
-    # czyszczenie starego wykresu
-    for widget in plot_stat.winfo_children():
-        widget.destroy()
+        if "wiek" in df.columns:
+            wyniki["sredni_wiek"] = round(df["wiek"].mean(), 1)
+            wyniki["mediana_wieku"] = round(df["wiek"].median(), 1)
 
-    typ = wybor_test.get()
+        if "bmi" in df.columns:
+            wyniki["srednie_bmi"] = round(df["bmi"].mean(), 1)
+            wyniki["max_bmi"] = round(df["bmi"].max(), 1)
+            wyniki["min_bmi"] = round(df["bmi"].min(), 1)
 
-    wynik = przygotuj_grupy(dane, typ)
+        if "cukrzyca_typ" in df.columns:
+            total = len(df)
+            wyniki["cukrzyca_typ1_%"] = round((df["cukrzyca_typ"] == "typ_1").sum() / total * 100, 1)
+            wyniki["cukrzyca_typ2_%"] = round((df["cukrzyca_typ"] == "typ_2").sum() / total * 100, 1)
 
-    if wynik is None:
-        wynik_stat.config(text="Brak danych do wybranego testu")
-        return
+        if "nadcisnienie" in df.columns:
+            wyniki["nadcisnienie_%"] = round((df["nadcisnienie"] == "tak").mean() * 100, 1)
 
-    g1, g2, nazwa1, nazwa2, ylabel = wynik
+        wyniki["liczba_pacjentow"] = len(df)
 
-    if len(g1) < 2 or len(g2) < 2:
+        log("Statystyki rozszerzone OK", "SUCCESS")
+        return wyniki
 
-        wynik_stat.config(text="Za mało danych do testu")
-        log("Za mało danych do testu t", "WARNING")
-        return
+    except Exception as e:
+        log(f"Błąd statystyk rozszerzonych: {e}", "ERROR")
+        return {}
 
-    t, p = ttest_ind(g1, g2, equal_var=False)
 
-    tekst = (
-        f"{nazwa1}: {g1.mean():.2f} ± {g1.std():.2f} (n={len(g1)})\n"
-        f"{nazwa2}: {g2.mean():.2f} ± {g2.std():.2f} (n={len(g2)})\n"
-        f"t = {t:.3f}    p = {p:.4f}"
-    )
+# =================
+# TEKST DO RAPORTU
+# =================
 
-    wynik_stat.config(text=tekst)
+def generuj_tekst_raportu(df=None):
+    try:
+        stats = statystyki_rozszerzone(df)
 
-    log(f"Wynik testu t: p = {p:.4f}")
+        if not stats:
+            return "Brak danych do raportu"
 
-    # =================
-    # WYKRES
-    # =================
+        tekst = (
+            f"Liczba pacjentów: {stats.get('liczba_pacjentow','-')}\n"
+            f"Średni wiek: {stats.get('sredni_wiek','-')}\n"
+            f"Mediana wieku: {stats.get('mediana_wieku','-')}\n"
+            f"Średnie BMI: {stats.get('srednie_bmi','-')}\n"
+            f"Min BMI: {stats.get('min_bmi','-')}\n"
+            f"Max BMI: {stats.get('max_bmi','-')}\n"
+            f"Cukrzyca typ 1: {stats.get('cukrzyca_typ1_%','-')}%\n"
+            f"Cukrzyca typ 2: {stats.get('cukrzyca_typ2_%','-')}%\n"
+            f"Nadciśnienie: {stats.get('nadcisnienie_%','-')}%\n"
+        )
 
-    fig = Figure(figsize=(6,4))
-    ax = fig.add_subplot(111)
+        log("Raport OK", "SUCCESS")
+        return tekst
 
-    box = ax.boxplot(
-        [g1, g2],
-        tick_labels=[nazwa1, nazwa2],
-        patch_artist=True
-    )
+    except Exception as e:
+        log(f"Błąd raportu: {e}", "ERROR")
+        return "Błąd generowania raportu"
 
-    colors = ["#4C72B0", "#DD8452"]
 
-    for patch, color in zip(box["boxes"], colors):
-        patch.set_facecolor(color)
+# =================
+# TEST STATYSTYCZNY
+# =================
 
-    ax.set_ylabel(ylabel)
-    ax.set_title(f"Porównanie grup: {typ}")
-    ax.grid(alpha=0.3)
-
-    canvas = FigureCanvasTkAgg(fig, master=plot_stat)
-    canvas.draw()
-
-    canvas.get_tk_widget().pack(
-        fill="both",
-        expand=True
-    )
+def rysuj_test(*args, **kwargs):
+    log("Test statystyczny jeszcze niezaimplementowany", "WARNING")
