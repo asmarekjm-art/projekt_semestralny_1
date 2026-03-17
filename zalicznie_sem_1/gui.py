@@ -13,13 +13,8 @@ import statystyka
 import eksport
 
 from dane import wczytaj_dane, filtruj_dane, wyszukaj, reset_filtry
-from statystyka import statystyki_opisowe, pokaz_statystyki, rysuj_test
-from wykresy import (
-    wykres_bmi,
-    wykres_nadcisnienie_kolowy,
-    wykres_cukrzyca_typ_kolowy,
-    wykres_leki_cukrzyca
-)
+from statystyka import statystyki_opisowe, pokaz_statystyki
+from wykresy import *
 from eksport import eksport_csv, raport_pdf
 
 
@@ -30,10 +25,45 @@ from eksport import eksport_csv, raport_pdf
 okno = ttkb.Window(themename="flatly")
 okno.title("Analiza pacjentów")
 okno.geometry("1200x720")
-okno.minsize(1100,650)
 
-style = ttk.Style()
-style.configure("Treeview", rowheight=26)
+# =================
+# GLOBALNE DANE
+# =================
+
+aktualne_dane = None
+
+
+# =================
+# LOGI
+# =================
+
+log_boxes = []
+
+
+def stworz_log_panel(parent):
+    frame = ttk.LabelFrame(parent, text="Logi")
+    frame.pack(fill="x", padx=5, pady=5)
+
+    box = ttkb.Text(frame, height=7)
+    box.pack(side="left", fill="both", expand=True)
+
+    scroll = ttk.Scrollbar(frame, command=box.yview)
+    scroll.pack(side="right", fill="y")
+    box.configure(yscrollcommand=scroll.set)
+
+    box.tag_config("ERROR", foreground="red")
+    box.tag_config("SUCCESS", foreground="green")
+
+    log_boxes.append(box)
+
+
+def log(msg, level="INFO"):
+    czas = datetime.now().strftime("%H:%M:%S")
+    txt = f"[{czas}] {level}: {msg}\n"
+
+    for b in log_boxes:
+        b.insert("end", txt, level)
+        b.see("end")
 
 
 # =================
@@ -43,9 +73,9 @@ style.configure("Treeview", rowheight=26)
 notebook = ttk.Notebook(okno)
 notebook.pack(fill="both", expand=True)
 
-tab_dane = ttk.Frame(notebook, padding=10)
-tab_wykresy = ttk.Frame(notebook, padding=10)
-tab_stat = ttk.Frame(notebook, padding=10)
+tab_dane = ttk.Frame(notebook)
+tab_wykresy = ttk.Frame(notebook)
+tab_stat = ttk.Frame(notebook)
 
 notebook.add(tab_dane, text="Dane")
 notebook.add(tab_wykresy, text="Wykresy")
@@ -53,310 +83,152 @@ notebook.add(tab_stat, text="Statystyka")
 
 
 # =================
-# TOOLBAR
+# TOOLBAR DANE
 # =================
 
 toolbar = ttk.Frame(tab_dane)
-toolbar.pack(fill="x", pady=5)
+toolbar.pack(fill="x")
 
-search_entry = ttk.Entry(toolbar, width=20)
-search_entry.pack(side="left", padx=5)
+search_entry = ttk.Entry(toolbar)
+search_entry.pack(side="left")
 
-ttk.Button(
-    toolbar,
-    text="Szukaj",
-    command=lambda: wyszukaj(search_entry, pokaz)
-).pack(side="left", padx=5)
+ttk.Button(toolbar, text="Szukaj",
+           command=lambda: wyszukaj(search_entry, pokaz)).pack(side="left")
 
-ttk.Button(
-    toolbar,
-    text="Wczytaj bazę",
-    command=lambda: wczytaj_dane(
-        pokaz,
-        lambda d: pokaz_statystyki(d, stat_label)
-    )
-).pack(side="left", padx=5)
+ttk.Button(toolbar, text="Wczytaj",
+           command=lambda: wczytaj_dane(
+               pokaz,
+               lambda d: pokaz_statystyki(d, stat_label)
+           )).pack(side="left")
 
-ttk.Button(
-    toolbar,
-    text="Statystyki opisowe",
-    command=lambda: statystyki_opisowe(pokaz)
-).pack(side="left", padx=5)
-
-ttk.Button(
-    toolbar,
-    text="Eksport CSV",
-    command=eksport_csv
-).pack(side="left", padx=5)
-
-ttk.Button(
-    toolbar,
-    text="Raport PDF",
-    command=raport_pdf
-).pack(side="left", padx=5)
+ttk.Button(toolbar, text="Eksport CSV", command=eksport_csv).pack(side="left")
+ttk.Button(toolbar, text="PDF", command=raport_pdf).pack(side="left")
 
 
 # =================
-# ZMIENNE FILTRÓW
+# FILTRY (MINIMAL)
 # =================
+
+ramka_filtry = ttk.LabelFrame(tab_dane, text="Filtry")
+ramka_filtry.pack(fill="x")
 
 var_k = ttkb.BooleanVar(value=True)
 var_m = ttkb.BooleanVar(value=True)
 
-var_cuk_tak = ttkb.BooleanVar(value=True)
-var_cuk_nie = ttkb.BooleanVar(value=True)
+ttk.Checkbutton(ramka_filtry, text="K", variable=var_k).pack(side="left")
+ttk.Checkbutton(ramka_filtry, text="M", variable=var_m).pack(side="left")
 
-var_nad_tak = ttkb.BooleanVar(value=True)
-var_nad_nie = ttkb.BooleanVar(value=True)
-
-var_typ1 = ttkb.BooleanVar(value=True)
-var_typ2 = ttkb.BooleanVar(value=True)
-
-
-# =================
-# FILTRY
-# =================
-
-ramka_filtry = ttk.LabelFrame(tab_dane, text="Filtry danych", padding=10)
-ramka_filtry.pack(fill="x", padx=5, pady=5)
-
-ramka_filtry.columnconfigure((0,1,2,3), weight=1)
-
-# płeć
-sekcja_plec = ttk.LabelFrame(ramka_filtry, text="Płeć")
-sekcja_plec.grid(row=0, column=0, padx=5)
-
-ttk.Checkbutton(sekcja_plec, text="Kobiety", variable=var_k).pack(anchor="w")
-ttk.Checkbutton(sekcja_plec, text="Mężczyźni", variable=var_m).pack(anchor="w")
-
-# wiek
-sekcja_wiek = ttk.LabelFrame(ramka_filtry, text="Wiek")
-sekcja_wiek.grid(row=0, column=1, padx=5)
-
-ttk.Label(sekcja_wiek,text="Od").grid(row=0,column=0)
-entry_min = ttk.Entry(sekcja_wiek,width=6)
-entry_min.grid(row=0,column=1)
-
-ttk.Label(sekcja_wiek,text="Do").grid(row=0,column=2)
-entry_max = ttk.Entry(sekcja_wiek,width=6)
-entry_max.grid(row=0,column=3)
-
-# BMI
-sekcja_bmi = ttk.LabelFrame(ramka_filtry, text="BMI")
-sekcja_bmi.grid(row=0, column=2, padx=5)
-
-ttk.Label(sekcja_bmi,text="Od").grid(row=0,column=0)
-entry_bmi_min = ttk.Entry(sekcja_bmi,width=6)
-entry_bmi_min.grid(row=0,column=1)
-
-ttk.Label(sekcja_bmi,text="Do").grid(row=0,column=2)
-entry_bmi_max = ttk.Entry(sekcja_bmi,width=6)
-entry_bmi_max.grid(row=0,column=3)
-
-# cholesterol
-sekcja_chol = ttk.LabelFrame(ramka_filtry, text="Cholesterol")
-sekcja_chol.grid(row=0, column=3, padx=5)
-
-ttk.Label(sekcja_chol,text="Od").grid(row=0,column=0)
-entry_chol_min = ttk.Entry(sekcja_chol,width=6)
-entry_chol_min.grid(row=0,column=1)
-
-ttk.Label(sekcja_chol,text="Do").grid(row=0,column=2)
-entry_chol_max = ttk.Entry(sekcja_chol,width=6)
-entry_chol_max.grid(row=0,column=3)
-
-# cukrzyca
-sekcja_cuk = ttk.LabelFrame(ramka_filtry, text="Cukrzyca")
-sekcja_cuk.grid(row=1, column=0)
-
-ttk.Checkbutton(sekcja_cuk,text="Tak",variable=var_cuk_tak).pack(anchor="w")
-ttk.Checkbutton(sekcja_cuk,text="Nie",variable=var_cuk_nie).pack(anchor="w")
-
-# nadciśnienie
-sekcja_nad = ttk.LabelFrame(ramka_filtry, text="Nadciśnienie")
-sekcja_nad.grid(row=1, column=1)
-
-ttk.Checkbutton(sekcja_nad,text="Tak",variable=var_nad_tak).pack(anchor="w")
-ttk.Checkbutton(sekcja_nad,text="Nie",variable=var_nad_nie).pack(anchor="w")
-
-# typ cukrzycy
-sekcja_typ = ttk.LabelFrame(ramka_filtry, text="Typ cukrzycy")
-sekcja_typ.grid(row=1, column=2)
-
-ttk.Checkbutton(sekcja_typ,text="Typ 1",variable=var_typ1).pack(anchor="w")
-ttk.Checkbutton(sekcja_typ,text="Typ 2",variable=var_typ2).pack(anchor="w")
-
-# leki nadciśnienia
-sekcja_leki = ttk.LabelFrame(ramka_filtry, text="Leki nadciśnienia")
-sekcja_leki.grid(row=1, column=3)
-
-leki_combo = ttk.Combobox(
-    sekcja_leki,
-    values=["wszystkie","ACEI","ARB","beta-bloker","diuretyk"],
-    width=15
-)
-leki_combo.current(0)
-leki_combo.pack()
-
-# przyciski
-frame_btn = ttk.Frame(ramka_filtry)
-frame_btn.grid(row=2,column=0,columnspan=4,pady=5)
-
-ttk.Button(
-    frame_btn,
-    text="Filtruj",
-    command=lambda: filtruj_dane(
-        var_k,var_m,
-        var_cuk_tak,var_cuk_nie,
-        var_nad_tak,var_nad_nie,
-        entry_min,entry_max,
-        pokaz,
-        lambda d: pokaz_statystyki(d, stat_label)
-    )
-).pack(side="left",padx=5)
-
-ttk.Button(
-    frame_btn,
-    text="Reset",
-    command=lambda: reset_filtry(
-        var_k,var_m,
-        var_cuk_tak,var_cuk_nie,
-        var_nad_tak,var_nad_nie,
-        entry_min,entry_max,
-        pokaz,
-        lambda d: pokaz_statystyki(d, stat_label)
-    )
-).pack(side="left",padx=5)
-
-
-# =================
-# PANEL TABELA + STAT + LOGI
-# =================
-
-panel_dol = ttk.Frame(tab_dane)
-panel_dol.pack(fill="both", expand=True)
+ttk.Button(ramka_filtry, text="Filtruj",
+           command=lambda: filtruj_dane(
+               var_k, var_m,
+               None, None,
+               None, None,
+               None, None,
+               pokaz,
+               lambda d: pokaz_statystyki(d, stat_label)
+           )).pack(side="left")
 
 
 # =================
 # TABELA
 # =================
 
-ramka_tabela = ttk.Frame(panel_dol)
-ramka_tabela.pack(fill="both", expand=True)
-
-tabela = ttk.Treeview(ramka_tabela)
-
-scroll_y = ttk.Scrollbar(ramka_tabela, orient="vertical", command=tabela.yview)
-scroll_x = ttk.Scrollbar(ramka_tabela, orient="horizontal", command=tabela.xview)
-
-tabela.configure(
-    yscrollcommand=scroll_y.set,
-    xscrollcommand=scroll_x.set
-)
-
-scroll_y.pack(side="right", fill="y")
-scroll_x.pack(side="bottom", fill="x")
-
+tabela = ttk.Treeview(tab_dane)
 tabela.pack(fill="both", expand=True)
 
 
-def pokaz(dane_df):
+def pokaz(df):
+    global aktualne_dane
+    aktualne_dane = df
 
     tabela.delete(*tabela.get_children())
 
-    if dane_df is None or dane_df.empty:
+    if df is None or df.empty:
+        log("Brak danych", "ERROR")
         return
 
-    kolumny = ["ID"] + list(dane_df.columns)
-
-    tabela["columns"] = kolumny
+    tabela["columns"] = list(df.columns)
     tabela["show"] = "headings"
 
-    for col in kolumny:
+    for col in df.columns:
         tabela.heading(col, text=col)
-        tabela.column(col, width=110, anchor="center")
 
-    for idx, row in dane_df.iterrows():
-        tabela.insert("", "end", values=[idx] + list(row))
-
-
-# =================
-# STATYSTYKA
-# =================
-
-stat_label = ttk.Label(
-    panel_dol,
-    text="Brak danych",
-    font=("Arial",10,"bold"),
-    anchor="w"
-)
-
-stat_label.pack(fill="x", padx=5, pady=3)
+    for _, row in df.iterrows():
+        tabela.insert("", "end", values=list(row))
 
 
 # =================
-# LOGI
+# STAT LABEL
 # =================
 
-frame_log = ttk.LabelFrame(panel_dol,text="Logi programu")
-frame_log.pack(fill="x",padx=5,pady=5)
+stat_label = ttk.Label(tab_dane, text="Brak danych")
+stat_label.pack()
 
-log_box = ttkb.Text(frame_log,height=7)
-
-scroll_log = ttk.Scrollbar(frame_log,command=log_box.yview)
-log_box.configure(yscrollcommand=scroll_log.set)
-
-log_box.pack(side="left",fill="both",expand=True)
-scroll_log.pack(side="right",fill="y")
-
-
-def log(msg, level="INFO"):
-
-    czas = datetime.now().strftime("%H:%M:%S")
-    wpis = f"[{czas}] {level}: {msg}\n"
-
-    log_box.insert("end", wpis)
-    log_box.see("end")
+stworz_log_panel(tab_dane)
 
 
 # =================
-# WYKRESY
+# WYKRESY TAB
 # =================
 
-panel_wykresy = ttk.Frame(tab_wykresy)
-panel_wykresy.pack(fill="x", pady=10)
+panel_btn = ttk.Frame(tab_wykresy)
+panel_btn.pack(fill="x")
 
-plot_wykres = ttk.Frame(tab_wykresy)
-plot_wykres.pack(fill="both", expand=True)
+plot = ttk.Frame(tab_wykresy)
+plot.pack(fill="both", expand=True)
 
 
-def pokaz_wykres(fig):
+def rysuj(fig):
+    for w in plot.winfo_children():
+        w.destroy()
 
-    for widget in plot_wykres.winfo_children():
-        widget.destroy()
-
-    canvas = FigureCanvasTkAgg(fig, master=plot_wykres)
+    canvas = FigureCanvasTkAgg(fig, master=plot)
     canvas.draw()
     canvas.get_tk_widget().pack(fill="both", expand=True)
 
 
-def generuj_wykres(funkcja):
+def wykres(f):
+    fig = f()
+    rysuj(fig)
+    log(f"Wykres: {f.__name__}", "SUCCESS")
 
-    fig = funkcja()
-    pokaz_wykres(fig)
+
+ttk.Button(panel_btn, text="BMI", command=lambda: wykres(wykres_bmi)).pack(side="left")
+ttk.Button(panel_btn, text="Nadciśnienie", command=lambda: wykres(wykres_nadcisnienie_kolowy)).pack(side="left")
+
+ttk.Button(panel_btn, text="CSV", command=eksport_csv).pack(side="right")
+ttk.Button(panel_btn, text="PDF", command=raport_pdf).pack(side="right")
+
+stworz_log_panel(tab_wykresy)
 
 
-ttk.Button(panel_wykresy,text="Rozkład BMI",
-command=lambda: generuj_wykres(wykres_bmi)).pack(side="left", padx=5)
+# =================
+# STATYSTYKA TAB
+# =================
 
-ttk.Button(panel_wykresy,text="Nadciśnienie",
-command=lambda: generuj_wykres(wykres_nadcisnienie_kolowy)).pack(side="left", padx=5)
+toolbar_stat = ttk.Frame(tab_stat)
+toolbar_stat.pack(fill="x")
 
-ttk.Button(panel_wykresy,text="Cukrzyca",
-command=lambda: generuj_wykres(wykres_cukrzyca_typ_kolowy)).pack(side="left", padx=5)
+ttk.Button(toolbar_stat, text="CSV", command=eksport_csv).pack(side="left")
+ttk.Button(toolbar_stat, text="PDF", command=raport_pdf).pack(side="left")
 
-ttk.Button(panel_wykresy,text="Leki",
-command=lambda: generuj_wykres(wykres_leki_cukrzyca)).pack(side="left", padx=5)
+plot_stat = ttk.Frame(tab_stat)
+plot_stat.pack(fill="both", expand=True)
+
+
+def wykres_stat(f):
+    fig = f()
+    for w in plot_stat.winfo_children():
+        w.destroy()
+
+    canvas = FigureCanvasTkAgg(fig, master=plot_stat)
+    canvas.draw()
+    canvas.get_tk_widget().pack(fill="both", expand=True)
+
+
+ttk.Button(toolbar_stat, text="BMI", command=lambda: wykres_stat(wykres_bmi)).pack(side="left")
+
+stworz_log_panel(tab_stat)
 
 
 # =================
@@ -368,4 +240,4 @@ dane.log = log
 wykresy.log = log
 statystyka.log = log
 
-okno.after(100, lambda: log("Aplikacja uruchomiona"))
+okno.after(100, lambda: log("Start", "SUCCESS"))
