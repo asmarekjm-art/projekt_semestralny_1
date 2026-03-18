@@ -15,53 +15,82 @@ def log(msg, level="INFO"):
 
 
 # =================
-# WYKRES BMI
+# WYKRES BMI (POPRAWIONY)
 # =================
+
+from matplotlib.figure import Figure
+from dane import get_dane
+
 
 def wykres_bmi():
 
     dane = get_dane()
 
     if dane is None or dane.empty:
-        log("Brak danych do wykresu BMI", "ERROR")
+        log("Brak danych — najpierw wczytaj bazę", "WARNING")
         return None
 
-    if not {"BMI", "plec"}.issubset(dane.columns):
-        log("Brak kolumn BMI lub plec", "ERROR")
+    # 🔥 normalizacja nazw kolumn (case insensitive)
+    cols = {c.lower(): c for c in dane.columns}
+
+    # szukamy BMI
+    if "bmi" not in cols:
+        log(f"Brak kolumny BMI. Dostępne: {list(dane.columns)}", "ERROR")
         return None
 
-    kobiety = dane[dane["plec"] == "K"]["BMI"].dropna()
-    mezczyzni = dane[dane["plec"] == "M"]["BMI"].dropna()
+    # szukamy płci (różne warianty)
+    plec_key = None
+    for key in ["plec", "płeć", "gender"]:
+        if key in cols:
+            plec_key = cols[key]
+            break
 
-    fig = Figure(figsize=(8,4))
+    if plec_key is None:
+        log(f"Brak kolumny płeć. Dostępne: {list(dane.columns)}", "ERROR")
+        return None
+
+    col_bmi = cols["bmi"]
+    col_plec = plec_key
+
+    # filtrowanie danych
+    kobiety = dane[dane[col_plec] == "K"][col_bmi].dropna()
+    mezczyzni = dane[dane[col_plec] == "M"][col_bmi].dropna()
+
+    if kobiety.empty and mezczyzni.empty:
+        log("Brak danych BMI po filtracji", "WARNING")
+        return None
+
+    fig = Figure(figsize=(8, 4))
 
     ax1 = fig.add_subplot(121)
     ax2 = fig.add_subplot(122)
 
     # kobiety
-    ax1.hist(kobiety, bins=15, color="pink", alpha=0.7)
+    if not kobiety.empty:
+        ax1.hist(kobiety, bins=15, color="pink", alpha=0.7)
     ax1.axvline(18.5, linestyle="--", color="red")
     ax1.axvline(25, linestyle="--", color="green")
 
     ax1.set_title("Kobiety")
     ax1.set_xlabel("BMI")
     ax1.set_ylabel("Liczba pacjentów")
-    ax1.set_xlim(15,45)
+    ax1.set_xlim(15, 45)
     ax1.grid(alpha=0.3)
 
     # mężczyźni
-    ax2.hist(mezczyzni, bins=15, color="lightblue", alpha=0.7)
+    if not mezczyzni.empty:
+        ax2.hist(mezczyzni, bins=15, color="lightblue", alpha=0.7)
     ax2.axvline(18.5, linestyle="--", color="red")
     ax2.axvline(25, linestyle="--", color="green")
 
     ax2.set_title("Mężczyźni")
     ax2.set_xlabel("BMI")
-    ax2.set_xlim(15,45)
+    ax2.set_xlim(15, 45)
     ax2.grid(alpha=0.3)
 
     fig.suptitle("Rozkład BMI według płci")
 
-    log("Generowanie wykresu BMI")
+    log("Wykres BMI wygenerowany")
 
     return fig
 
