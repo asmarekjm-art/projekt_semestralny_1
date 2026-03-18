@@ -298,49 +298,162 @@ sub_notebook.bind("<<NotebookTabChanged>>", on_tab_change)
 
 okno.after(200, lambda: tabs["BMI"]())
 # =================
-# STATYSTYKA
+# -----------------
+# ZAKŁADKA STATYSTYKA (PRO)
+# -----------------
 # =================
 
-frame_stat = ttk.Frame(tab_stat)
-frame_stat.pack(fill="both", expand=True, padx=10, pady=10)
+sub_stat = ttk.Notebook(tab_stat)
+sub_stat.pack(fill="both", expand=True)
 
-stat_var = ttkb.StringVar()
-combo_stat = ttk.Combobox(frame_stat, textvariable=stat_var, state="readonly")
-combo_stat.pack(fill="x", pady=5)
+current_fig_stat = None
 
 
-def odswiez():
-    df = get_dane()
-    if df is not None:
-        combo_stat["values"] = list(df.columns)
+def create_stat_tab(name, draw_func):
+    tab = ttk.Frame(sub_stat)
+    sub_stat.add(tab, text=name)
+
+    frame = ttk.Frame(tab)
+    frame.pack(fill="both", expand=True)
+
+    plot_area = ttk.Frame(frame)
+    plot_area.pack(fill="both", expand=True)
+
+    bottom = ttk.Frame(frame)
+    bottom.pack(pady=10)
+
+    def draw():
+        global current_fig_stat
+
+        for w in plot_area.winfo_children():
+            w.destroy()
+
+        fig = draw_func()
+
+        if fig is None:
+            ttk.Label(plot_area, text="Brak danych").pack(expand=True)
+            return
+
+        current_fig_stat = fig
+
+        canvas = FigureCanvasTkAgg(fig, master=plot_area)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
+
+        log(f"Statystyka: {name}")
+
+    def save_png():
+        if current_fig_stat:
+            current_fig_stat.savefig(f"{name}.png")
+            log(f"Zapisano {name}.png")
+
+    def save_pdf():
+        if current_fig_stat:
+            current_fig_stat.savefig(f"{name}.pdf")
+            log(f"Zapisano {name}.pdf")
+
+    ttk.Button(bottom, text="Odśwież", command=draw).pack(side="left", padx=5)
+    ttk.Button(bottom, text="Zapisz PNG", command=save_png).pack(side="left", padx=5)
+    ttk.Button(bottom, text="Zapisz PDF", command=save_pdf).pack(side="left", padx=5)
+
+    return draw
 
 
-tab_stat.bind("<Visibility>", lambda e: odswiez())
+# =================
+# FUNKCJE WYKRESÓW STATYSTYCZNYCH
+# =================
 
-
-def pokaz_stat():
+def stat_hist():
     df = get_dane()
     if df is None:
-        return
+        return None
 
-    kol = stat_var.get()
-    if kol not in df.columns:
-        return
-
-    for w in frame_stat.winfo_children()[1:]:
-        w.destroy()
+    num = df.select_dtypes(include="number")
+    if num.empty:
+        return None
 
     fig, ax = plt.subplots()
-    df[kol].dropna().hist(ax=ax)
+    num.iloc[:, 0].dropna().hist(ax=ax, bins=20)
 
-    canvas = FigureCanvasTkAgg(fig, master=frame_stat)
-    canvas.draw()
-    canvas.get_tk_widget().pack(fill="both", expand=True)
-
-
-ttk.Button(frame_stat, text="Pokaż wykres", command=pokaz_stat).pack()
+    ax.set_title(f"Rozkład: {num.columns[0]}")
+    return fig
 
 
+def stat_ttest():
+    df = get_dane()
+    if df is None:
+        return None
+
+    cols = {c.lower(): c for c in df.columns}
+
+    if "bmi" not in cols:
+        return None
+
+    plec_col = None
+    for key in ["plec", "płeć", "gender"]:
+        if key in cols:
+            plec_col = cols[key]
+            break
+
+    if plec_col is None:
+        return None
+
+    k = df[df[plec_col] == "K"][cols["bmi"]].dropna()
+    m = df[df[plec_col] == "M"][cols["bmi"]].dropna()
+
+    fig, ax = plt.subplots()
+    ax.hist(k, alpha=0.6, label="K")
+    ax.hist(m, alpha=0.6, label="M")
+
+    ax.legend()
+    ax.set_title("t-Studenta (BMI K vs M)")
+
+    return fig
+
+
+def stat_boxplot():
+    df = get_dane()
+    if df is None:
+        return None
+
+    cols = {c.lower(): c for c in df.columns}
+
+    if "bmi" not in cols:
+        return None
+
+    fig, ax = plt.subplots()
+    df.boxplot(column=cols["bmi"], ax=ax)
+
+    ax.set_title("Boxplot BMI")
+
+    return fig
+
+
+# =================
+# TWORZENIE PODZAKŁADEK
+# =================
+
+load_hist = create_stat_tab("Rozkład", stat_hist)
+load_t = create_stat_tab("t-Studenta", stat_ttest)
+load_box = create_stat_tab("Boxplot", stat_boxplot)
+
+
+def on_stat_change(event):
+    tab = event.widget.tab(event.widget.select(), "text")
+
+    if tab == "Rozkład":
+        load_hist()
+    elif tab == "t-Studenta":
+        load_t()
+    elif tab == "Boxplot":
+        load_box()
+
+
+sub_stat.bind("<<NotebookTabChanged>>", on_stat_change)
+
+
+# AUTO START
+okno.after(300, lambda: load_hist())
 # =================
 # ANALIZA
 # =================
