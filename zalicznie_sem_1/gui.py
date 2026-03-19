@@ -51,6 +51,7 @@ frame_log.configure(height=120)
 frame_log.pack_propagate(False)
 
 
+
 # =================
 # NOTEBOOK
 # =================
@@ -89,13 +90,42 @@ ttk.Button(toolbar, text="Wczytaj bazę",
                lambda d: pokaz_statystyki(d, stat_label)
            )).pack(side="left", padx=5)
 
-ttk.Button(toolbar, text="Statystyki opisowe",
-           command=lambda: pokaz(statystyki_opisowe(get_dane()))
-           ).pack(side="left", padx=5)
 
-ttk.Button(toolbar, text="Baza",
-           command=lambda: pokaz(get_dane())
-           ).pack(side="left", padx=5)
+
+def toggle_statystyki():
+    global tryb_stat
+
+    df = get_dane()
+    if df is None:
+        return
+
+    if not tryb_stat:
+        stats = statystyki_opisowe(df)
+
+        if stats is None or stats.empty:
+            stat_label.config(text="Brak danych")
+            return
+
+        pokaz(stats)
+        stat_label.config(text=opis_stat)
+        stat_label.pack(fill="x", pady=5)
+
+        btn_stat.config(text="Baza")
+        tryb_stat = True
+
+    else:
+        pokaz(df)
+        stat_label.pack_forget()
+
+        btn_stat.config(text="Statystyki opisowe")
+        tryb_stat = False
+
+btn_stat = ttk.Button(
+    toolbar,
+    text="Statystyki opisowe",
+    command=toggle_statystyki
+)
+btn_stat.pack(side="left", padx=5)
 
 ttk.Button(toolbar, text="Eksport CSV",
            command=eksport_csv).pack(side="left", padx=5)
@@ -103,8 +133,9 @@ ttk.Button(toolbar, text="Eksport CSV",
 ttk.Button(toolbar, text="Raport PDF",
            command=raport_pdf).pack(side="left", padx=5)
 
+tryb_stat = False
 # =================
-# FILTRY (PRZYWRÓCONE)
+# FILTRY
 # =================
 
 ramka_filtry = ttk.LabelFrame(tab_dane, text="🔎 Filtry", padding=12)
@@ -123,7 +154,6 @@ var_cuk_brak = ttkb.BooleanVar(value=True)
 var_nad_tak = ttkb.BooleanVar(value=True)
 var_nad_nie = ttkb.BooleanVar(value=True)
 
-# Wiersz 1
 ttk.Label(ramka_filtry, text="Płeć").grid(row=0, column=0)
 ttk.Checkbutton(ramka_filtry, text="K", variable=var_k).grid(row=0, column=1)
 ttk.Checkbutton(ramka_filtry, text="M", variable=var_m).grid(row=0, column=2)
@@ -134,7 +164,6 @@ entry_min.grid(row=0, column=4)
 entry_max = ttk.Entry(ramka_filtry, width=6)
 entry_max.grid(row=0, column=5)
 
-# Wiersz 2
 ttk.Label(ramka_filtry, text="BMI").grid(row=1, column=0)
 entry_bmi_min = ttk.Entry(ramka_filtry, width=6)
 entry_bmi_min.grid(row=1, column=1)
@@ -145,13 +174,11 @@ ttk.Label(ramka_filtry, text="Nadciśnienie").grid(row=1, column=3)
 ttk.Checkbutton(ramka_filtry, text="Tak", variable=var_nad_tak).grid(row=1, column=4)
 ttk.Checkbutton(ramka_filtry, text="Nie", variable=var_nad_nie).grid(row=1, column=5)
 
-# Wiersz 3
 ttk.Label(ramka_filtry, text="Cukrzyca").grid(row=2, column=0)
 ttk.Checkbutton(ramka_filtry, text="Typ 1", variable=var_cuk_typ1).grid(row=2, column=1)
 ttk.Checkbutton(ramka_filtry, text="Typ 2", variable=var_cuk_typ2).grid(row=2, column=2)
 ttk.Checkbutton(ramka_filtry, text="Brak", variable=var_cuk_brak).grid(row=2, column=3)
 
-# Przyciski
 frame_btn = ttk.Frame(ramka_filtry)
 frame_btn.grid(row=3, column=0, columnspan=6, pady=10)
 
@@ -175,6 +202,7 @@ ttk.Button(frame_btn, text="Reset",
                pokaz,
                lambda d: pokaz_statystyki(d, stat_label)
            )).pack(side="left", padx=5)
+
 
 # =================
 # TABELA
@@ -213,16 +241,34 @@ def pokaz(df):
     for i, row in df.iterrows():
         tabela.insert("", "end", values=[i] + list(row))
 
+opis_stat = """
+STATYSTYKI OPISOWE:
 
-stat_label = ttk.Label(tab_dane, text="Brak danych",
-                       font=("Segoe UI", 10, "bold"))
+count – liczba obserwacji
+mean – średnia wartość
+std – odchylenie standardowe
+
+min / max – zakres wartości
+
+25% – dolny kwartyl
+50% – mediana
+75% – górny kwartyl
+
+Interpretacja:
+- niskie std → dane podobne
+- wysokie std → duże różnice
+"""
+
+stat_label = ttk.Label(
+    tab_dane,
+    text="",
+    justify="left",
+    font=("Segoe UI", 9)
+)
 stat_label.pack(fill="x", pady=5)
 
-
 # =================
-# -----------------
-# ZAKŁADKA WYKRESY
-# -----------------
+# WYKRESY
 # =================
 
 sub_notebook = ttk.Notebook(tab_wykresy)
@@ -231,6 +277,7 @@ sub_notebook.pack(fill="both", expand=True)
 tabs = {}
 current_fig = None
 
+
 def create_tab(name, func):
     tab = ttk.Frame(sub_notebook)
     sub_notebook.add(tab, text=name)
@@ -238,7 +285,6 @@ def create_tab(name, func):
     frame = ttk.Frame(tab)
     frame.pack(fill="both", expand=True)
 
-    # LAYOUT
     frame.rowconfigure(0, weight=1)
     frame.rowconfigure(1, weight=0)
     frame.columnconfigure(0, weight=1)
@@ -248,7 +294,6 @@ def create_tab(name, func):
 
     bottom = ttk.Frame(frame)
     bottom.grid(row=1, column=0, sticky="ew", pady=10)
-
 
     def draw():
         global current_fig
@@ -283,33 +328,30 @@ def create_tab(name, func):
     ttk.Button(bottom, text="Odśwież", command=draw).pack(side="left", padx=5)
     ttk.Button(bottom, text="Zapisz PNG", command=save_png).pack(side="left", padx=5)
     ttk.Button(bottom, text="Zapisz PDF", command=save_pdf).pack(side="left", padx=5)
+
     tabs[str(tab)] = draw
     return draw
 
-# tworzenie zakładek
+
 create_tab("BMI", wykres_bmi)
 create_tab("Nadcisnienie", wykres_nadcisnienie_kolowy)
 create_tab("Cukrzyca", wykres_cukrzyca_typ_kolowy)
 create_tab("Leki", wykres_leki_cukrzyca)
 
 
-# AUTO ŁADOWANIE
 def on_tab_change(event):
     selected_tab = str(event.widget.select())
-
     if selected_tab in tabs:
         tabs[selected_tab]()
 
+
 sub_notebook.bind("<<NotebookTabChanged>>", on_tab_change)
+okno.after(250, lambda: on_tab_change(type("e", (), {"widget": sub_notebook})()))
+okno.after(200, lambda: list(tabs.values())[0]() if tabs and get_dane() is not None else None)
 
-
-
-okno.after(200, lambda: list(tabs.values())[0]())
 
 # =================
-# -----------------
-# ZAKŁADKA STATYSTYKA (PRO)
-# -----------------
+# STATYSTYKA
 # =================
 
 sub_stat = ttk.Notebook(tab_stat)
@@ -335,8 +377,6 @@ def create_stat_tab(name, draw_func):
     bottom = ttk.Frame(frame)
     bottom.grid(row=1, column=0, sticky="ew", pady=10)
 
-    bottom.columnconfigure((0, 1, 2), weight=1)
-
     def draw():
         global current_fig_stat
 
@@ -357,26 +397,10 @@ def create_stat_tab(name, draw_func):
 
         log(f"Statystyka: {name}")
 
-    def save_png():
-        if current_fig_stat:
-            current_fig_stat.savefig(f"{name}.png")
-            log(f"Zapisano {name}.png")
-
-    def save_pdf():
-        if current_fig_stat:
-            current_fig_stat.savefig(f"{name}.pdf")
-            log(f"Zapisano {name}.pdf")
-
     ttk.Button(bottom, text="Odśwież", command=draw).pack(side="left", padx=5)
-    ttk.Button(bottom, text="Zapisz PNG", command=save_png).pack(side="left", padx=5)
-    ttk.Button(bottom, text="Zapisz PDF", command=save_pdf).pack(side="left", padx=5)
 
     return draw
 
-
-# =================
-# FUNKCJE WYKRESÓW STATYSTYCZNYCH
-# =================
 
 def stat_hist():
     df = get_dane()
@@ -389,7 +413,6 @@ def stat_hist():
 
     fig, ax = plt.subplots()
     num.iloc[:, 0].dropna().hist(ax=ax, bins=20)
-
     ax.set_title(f"Rozkład: {num.columns[0]}")
     return fig
 
@@ -404,17 +427,15 @@ def stat_ttest():
     if "bmi" not in cols:
         return None
 
-    plec_col = None
-    for key in ["plec", "płeć", "gender"]:
-        if key in cols:
-            plec_col = cols[key]
-            break
-
+    plec_col = next((cols[k] for k in ["plec", "płeć", "gender"] if k in cols), None)
     if plec_col is None:
         return None
 
     k = df[df[plec_col] == "K"][cols["bmi"]].dropna()
     m = df[df[plec_col] == "M"][cols["bmi"]].dropna()
+
+    if len(k) == 0 or len(m) == 0:
+        return None
 
     fig, ax = plt.subplots()
     ax.hist(k, alpha=0.6, label="K")
@@ -422,7 +443,6 @@ def stat_ttest():
 
     ax.legend()
     ax.set_title("t-Studenta (BMI K vs M)")
-
     return fig
 
 
@@ -440,35 +460,32 @@ def stat_boxplot():
     df.boxplot(column=cols["bmi"], ax=ax)
 
     ax.set_title("Boxplot BMI")
-
     return fig
 
-
-# =================
-# TWORZENIE PODZAKŁADEK
-# =================
 
 load_hist = create_stat_tab("Rozkład", stat_hist)
 load_t = create_stat_tab("t-Studenta", stat_ttest)
 load_box = create_stat_tab("Boxplot", stat_boxplot)
 
+stat_tabs = {
+    "Rozkład": load_hist,
+    "t-Studenta": load_t,
+    "Boxplot": load_box
+}
+
 
 def on_stat_change(event):
-    tab = event.widget.tab(event.widget.select(), "text")
-
-    if tab == "Rozkład":
-        load_hist()
-    elif tab == "t-Studenta":
-        load_t()
-    elif tab == "Boxplot":
-        load_box()
+    tab_name = event.widget.tab(event.widget.select(), "text")
+    if tab_name in stat_tabs:
+        stat_tabs[tab_name]()
 
 
 sub_stat.bind("<<NotebookTabChanged>>", on_stat_change)
 
+# 🔥 auto start statystyki
+okno.after(400, lambda: on_stat_change(type("e", (), {"widget": sub_stat})()))
 
-# AUTO START
-okno.after(300, lambda: load_hist())
+
 # =================
 # ANALIZA
 # =================
@@ -515,6 +532,7 @@ ttk.Button(frame_analiza, text="Pokaż korelacje", command=analiza).pack()
 
 log_box = ttkb.Text(frame_log)
 scroll = ttk.Scrollbar(frame_log, command=log_box.yview)
+
 log_box.configure(yscrollcommand=scroll.set)
 
 log_box.pack(side="left", fill="both", expand=True)
