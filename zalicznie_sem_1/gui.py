@@ -229,6 +229,7 @@ sub_notebook = ttk.Notebook(tab_wykresy)
 sub_notebook.pack(fill="both", expand=True)
 
 tabs = {}
+current_fig = None
 
 def create_tab(name, func):
     tab = ttk.Frame(sub_notebook)
@@ -237,11 +238,17 @@ def create_tab(name, func):
     frame = ttk.Frame(tab)
     frame.pack(fill="both", expand=True)
 
+    # LAYOUT
+    frame.rowconfigure(0, weight=1)
+    frame.rowconfigure(1, weight=0)
+    frame.columnconfigure(0, weight=1)
+
     plot_area = ttk.Frame(frame)
-    plot_area.pack(fill="both", expand=True)
+    plot_area.grid(row=0, column=0, sticky="nsew")
 
     bottom = ttk.Frame(frame)
-    bottom.pack(pady=10)
+    bottom.grid(row=1, column=0, sticky="ew", pady=10)
+
 
     def draw():
         global current_fig
@@ -276,27 +283,29 @@ def create_tab(name, func):
     ttk.Button(bottom, text="Odśwież", command=draw).pack(side="left", padx=5)
     ttk.Button(bottom, text="Zapisz PNG", command=save_png).pack(side="left", padx=5)
     ttk.Button(bottom, text="Zapisz PDF", command=save_pdf).pack(side="left", padx=5)
-
-    tabs[name] = draw
-
+    tabs[str(tab)] = draw
+    return draw
 
 # tworzenie zakładek
 create_tab("BMI", wykres_bmi)
-create_tab("Nadciśnienie", wykres_nadcisnienie_kolowy)
+create_tab("Nadcisnienie", wykres_nadcisnienie_kolowy)
 create_tab("Cukrzyca", wykres_cukrzyca_typ_kolowy)
 create_tab("Leki", wykres_leki_cukrzyca)
 
 
-# 🔥 AUTO ŁADOWANIE
+# AUTO ŁADOWANIE
 def on_tab_change(event):
-    tab = event.widget.tab(event.widget.select(), "text")
-    tabs[tab]()
+    selected_tab = str(event.widget.select())
+
+    if selected_tab in tabs:
+        tabs[selected_tab]()
 
 sub_notebook.bind("<<NotebookTabChanged>>", on_tab_change)
 
 
 
-okno.after(200, lambda: tabs["BMI"]())
+okno.after(200, lambda: list(tabs.values())[0]())
+
 # =================
 # -----------------
 # ZAKŁADKA STATYSTYKA (PRO)
@@ -316,11 +325,17 @@ def create_stat_tab(name, draw_func):
     frame = ttk.Frame(tab)
     frame.pack(fill="both", expand=True)
 
+    frame.rowconfigure(0, weight=1)
+    frame.rowconfigure(1, weight=0)
+    frame.columnconfigure(0, weight=1)
+
     plot_area = ttk.Frame(frame)
-    plot_area.pack(fill="both", expand=True)
+    plot_area.grid(row=0, column=0, sticky="nsew")
 
     bottom = ttk.Frame(frame)
-    bottom.pack(pady=10)
+    bottom.grid(row=1, column=0, sticky="ew", pady=10)
+
+    bottom.columnconfigure((0, 1, 2), weight=1)
 
     def draw():
         global current_fig_stat
