@@ -138,7 +138,7 @@ ttk.Button(toolbar, text="Szukaj",
 ttk.Button(toolbar, text="Wczytaj bazę",
            command=lambda: wczytaj_dane(
                pokaz,
-               lambda d: pokaz_statystyki(d, stat_label)
+               lambda d: aktualizuj_statystyki(d)
            )).pack(side="left", padx=5)
 
 
@@ -146,6 +146,35 @@ ttk.Button(toolbar, text="Wczytaj bazę",
 # STATYSTYKI OPISOWE (PRZYWRÓCONE)
 # =================
 tryb_stat = False
+opis_stat = """
+📊 STATYSTYKI OPISOWE:
+
+• count – liczba obserwacji
+• mean – średnia
+• std – odchylenie standardowe
+• min/max – zakres
+• 50% – mediana
+
+🧠 Interpretacja:
+• niskie std → dane podobne
+• wysokie std → duża zmienność
+• średnia ≠ mediana → możliwe outliery
+"""
+def aktualizuj_statystyki(df):
+    if df is None:
+        return
+
+    # generujemy statystyki jako string
+    stats = statystyki_opisowe(df)
+
+    if stats is not None:
+        tekst = stats.to_string()
+    else:
+        tekst = "Brak statystyk"
+
+    stat_label.config(
+        text=tekst + "\n\n" + opis_stat
+    )
 
 def toggle_statystyki():
     global tryb_stat
@@ -160,14 +189,13 @@ def toggle_statystyki():
         if stats is not None:
             pokaz(stats)
 
-        pokaz_statystyki(df, stat_label)
+        aktualizuj_statystyki(df)
 
-        stat_label.pack(fill="x", pady=5)
+
         btn_stat.config(text="Baza")
         tryb_stat = True
     else:
         pokaz(df)
-        stat_label.pack_forget()
         btn_stat.config(text="Statystyki opisowe")
         tryb_stat = False
 
@@ -223,6 +251,31 @@ ttk.Checkbutton(ramka_filtry, text="Typ 1", variable=var_cuk_typ1).grid(row=2, c
 ttk.Checkbutton(ramka_filtry, text="Typ 2", variable=var_cuk_typ2).grid(row=2, column=2)
 ttk.Checkbutton(ramka_filtry, text="Brak", variable=var_cuk_brak).grid(row=2, column=3)
 
+frame_btn = ttk.Frame(ramka_filtry)
+frame_btn.grid(row=3, column=0, columnspan=6, pady=10)
+
+ttk.Button(frame_btn, text="Filtruj",
+    command=lambda: filtruj_dane(
+        var_k, var_m,
+        var_cuk_typ1, var_cuk_typ2, var_cuk_brak,
+        var_nad_tak, var_nad_nie,
+        entry_min, entry_max,
+        pokaz,
+        lambda d: aktualizuj_statystyki(d),
+        entry_bmi_min, entry_bmi_max
+)).pack(side="left", padx=5)
+
+ttk.Button(frame_btn, text="Reset",
+    command=lambda: reset_filtry(
+        var_k, var_m,
+        var_cuk_typ1, var_cuk_typ2, var_cuk_brak,
+        var_nad_tak, var_nad_nie,
+        entry_min, entry_max,
+        pokaz,
+        lambda d: aktualizuj_statystyki(d),
+        entry_bmi_min, entry_bmi_max
+)).pack(side="left", padx=5)
+
 # =================
 # TABELA
 # =================
@@ -250,11 +303,31 @@ tabela.pack(fill="both", expand=True)
 # STAT LABEL (PRZYWRÓCONY)
 # =================
 ramka_stat = ttk.LabelFrame(tab_dane, text="📊 Statystyki opisowe")
-ramka_stat.pack(fill="x", padx=10, pady=5)
+ramka_stat.pack(fill="both", padx=10, pady=5, expand=False)
 
-stat_label = ttk.Label(ramka_stat, text="", justify="left")
+canvas_stat = ttkb.Canvas(ramka_stat, height=150)
+scroll_stat = ttk.Scrollbar(ramka_stat, orient="vertical", command=canvas_stat.yview)
+
+frame_stat_inner = ttk.Frame(canvas_stat)
+
+frame_stat_inner.bind(
+    "<Configure>",
+    lambda e: canvas_stat.configure(scrollregion=canvas_stat.bbox("all"))
+)
+
+canvas_stat.create_window((0, 0), window=frame_stat_inner, anchor="nw")
+canvas_stat.configure(yscrollcommand=scroll_stat.set)
+
+canvas_stat.pack(side="left", fill="both", expand=True)
+scroll_stat.pack(side="right", fill="y")
+
+stat_label = ttk.Label(
+    frame_stat_inner,
+    text="",
+    justify="left",
+    font=("Segoe UI", 10)
+)
 stat_label.pack(anchor="w")
-
 
 # =================
 # PODSUMOWANIE
