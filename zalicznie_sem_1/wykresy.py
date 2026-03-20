@@ -15,12 +15,8 @@ def log(msg, level="INFO"):
 
 
 # =================
-# WYKRES BMI (POPRAWIONY)
+# WYKRES BMI
 # =================
-
-from matplotlib.figure import Figure
-from dane import get_dane
-
 
 def wykres_bmi():
 
@@ -30,15 +26,13 @@ def wykres_bmi():
         log("Brak danych — najpierw wczytaj bazę", "WARNING")
         return None
 
-    # 🔥 normalizacja nazw kolumn (case insensitive)
+    # normalizacja nazw kolumn
     cols = {c.lower(): c for c in dane.columns}
 
-    # szukamy BMI
     if "bmi" not in cols:
         log(f"Brak kolumny BMI. Dostępne: {list(dane.columns)}", "ERROR")
         return None
 
-    # szukamy płci (różne warianty)
     plec_key = None
     for key in ["plec", "płeć", "gender"]:
         if key in cols:
@@ -52,7 +46,9 @@ def wykres_bmi():
     col_bmi = cols["bmi"]
     col_plec = plec_key
 
-    # filtrowanie danych
+    # 🔥 normalizacja wartości
+    dane[col_plec] = dane[col_plec].astype(str).str.upper().str.strip()
+
     kobiety = dane[dane[col_plec] == "K"][col_bmi].dropna()
     mezczyzni = dane[dane[col_plec] == "M"][col_bmi].dropna()
 
@@ -65,24 +61,20 @@ def wykres_bmi():
     ax1 = fig.add_subplot(121)
     ax2 = fig.add_subplot(122)
 
-    # kobiety
     if not kobiety.empty:
         ax1.hist(kobiety, bins=15, color="pink", alpha=0.7)
     ax1.axvline(18.5, linestyle="--", color="red")
     ax1.axvline(25, linestyle="--", color="green")
-
     ax1.set_title("Kobiety")
     ax1.set_xlabel("BMI")
     ax1.set_ylabel("Liczba pacjentów")
     ax1.set_xlim(15, 45)
     ax1.grid(alpha=0.3)
 
-    # mężczyźni
     if not mezczyzni.empty:
         ax2.hist(mezczyzni, bins=15, color="lightblue", alpha=0.7)
     ax2.axvline(18.5, linestyle="--", color="red")
     ax2.axvline(25, linestyle="--", color="green")
-
     ax2.set_title("Mężczyźni")
     ax2.set_xlabel("BMI")
     ax2.set_xlim(15, 45)
@@ -111,33 +103,23 @@ def wykres_nadcisnienie_kolowy():
         log("Brak kolumny nadcisnienie", "ERROR")
         return None
 
-    counts = dane["nadcisnienie"].value_counts()
+    nad = dane["nadcisnienie"].astype(str).str.lower().str.strip()
 
     values = [
-        counts.get("tak",0),
-        counts.get("nie",0)
+        nad.isin(["tak", "1", "true", "yes"]).sum(),
+        nad.isin(["nie", "0", "false", "no"]).sum()
     ]
 
     if sum(values) == 0:
         log("Brak danych do wykresu nadciśnienia", "ERROR")
         return None
 
-    labels = [
-        "Nadciśnienie",
-        "Brak nadciśnienia"
-    ]
+    labels = ["Nadciśnienie", "Brak nadciśnienia"]
 
-    fig = Figure(figsize=(5,4))
+    fig = Figure(figsize=(5, 4))
     ax = fig.add_subplot(111)
 
-    ax.pie(
-        values,
-        labels=labels,
-        autopct="%1.1f%%",
-        colors=["red","green"],
-        startangle=90
-    )
-
+    ax.pie(values, labels=labels, autopct="%1.1f%%", colors=["red", "green"], startangle=90)
     ax.set_title(f"Nadciśnienie w populacji (N={len(dane)})")
 
     log("Generowanie wykresu nadciśnienia")
@@ -157,13 +139,16 @@ def wykres_cukrzyca_typ_kolowy():
         log("Brak danych do wykresu cukrzycy", "ERROR")
         return None
 
-    if not {"cukrzyca","typ_cukrzycy"}.issubset(dane.columns):
+    if not {"cukrzyca", "typ_cukrzycy"}.issubset(dane.columns):
         log("Brak kolumn cukrzyca lub typ_cukrzycy", "ERROR")
         return None
 
-    brak = len(dane[dane["cukrzyca"] == "nie"])
-    typ1 = len(dane[dane["typ_cukrzycy"] == "typ 1"])
-    typ2 = len(dane[dane["typ_cukrzycy"] == "typ 2"])
+    cuk = dane["cukrzyca"].astype(str).str.lower().str.strip()
+    typ = dane["typ_cukrzycy"].astype(str).str.lower().str.strip()
+
+    brak = (cuk == "nie").sum()
+    typ1 = (typ == "typ 1").sum()
+    typ2 = (typ == "typ 2").sum()
 
     values = [brak, typ1, typ2]
 
@@ -171,22 +156,13 @@ def wykres_cukrzyca_typ_kolowy():
         log("Brak danych do wykresu cukrzycy", "ERROR")
         return None
 
-    labels = [
-        "Brak cukrzycy",
-        "Typ 1",
-        "Typ 2"
-    ]
+    labels = ["Brak cukrzycy", "Typ 1", "Typ 2"]
 
-    fig = Figure(figsize=(5,4))
+    fig = Figure(figsize=(5, 4))
     ax = fig.add_subplot(111)
 
-    ax.pie(
-        values,
-        labels=labels,
-        autopct="%1.1f%%",
-        colors=["green","orange","red"],
-        startangle=90
-    )
+    ax.pie(values, labels=labels, autopct="%1.1f%%",
+           colors=["green", "orange", "red"], startangle=90)
 
     ax.set_title(f"Cukrzyca w populacji (N={len(dane)})")
 
@@ -207,11 +183,12 @@ def wykres_leki_cukrzyca():
         log("Brak danych do wykresu leków", "ERROR")
         return None
 
-    if not {"leki_na_cukrzyce","cukrzyca"}.issubset(dane.columns):
+    if not {"leki_na_cukrzyce", "cukrzyca"}.issubset(dane.columns):
         log("Brak kolumn leki_na_cukrzyce lub cukrzyca", "ERROR")
         return None
 
-    dane_cukrzyca = dane[dane["cukrzyca"] == "tak"].copy()
+    cuk = dane["cukrzyca"].astype(str).str.lower().str.strip()
+    dane_cukrzyca = dane[cuk == "tak"].copy()
 
     if dane_cukrzyca.empty:
         log("Brak pacjentów z cukrzycą")
@@ -225,29 +202,17 @@ def wykres_leki_cukrzyca():
 
     counts = dane_cukrzyca["leki_na_cukrzyce"].value_counts()
 
-    fig = Figure(figsize=(6,4))
+    fig = Figure(figsize=(6, 4))
     ax = fig.add_subplot(111)
 
     x = range(len(counts))
 
-    ax.bar(
-        x,
-        counts.values,
-        color="purple",
-        alpha=0.7
-    )
-
+    ax.bar(x, counts.values, color="purple", alpha=0.7)
     ax.set_xticks(x)
-
-    ax.set_xticklabels(
-        counts.index,
-        rotation=30,
-        ha="right"
-    )
+    ax.set_xticklabels(counts.index, rotation=30, ha="right")
 
     ax.set_ylabel("Liczba pacjentów")
     ax.set_title(f"Leczenie cukrzycy (N={len(dane_cukrzyca)})")
-
     ax.grid(axis="y", alpha=0.3)
 
     fig.tight_layout()
