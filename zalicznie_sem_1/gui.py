@@ -58,6 +58,9 @@ def log(msg, level="INFO"):
         return
     last_log["msg"] = msg
 
+    if int(log_box.index('end-1c').split('.')[0]) > 200:
+        log_box.delete("1.0", "2.0")
+
     czas = datetime.now().strftime("%H:%M:%S")
     log_box.insert("end", f"[{czas}] {level}: {msg}\n")
     log_box.see("end")
@@ -85,11 +88,43 @@ notebook.add(tab_wykresy, text="Wykresy")
 notebook.add(tab_stat, text="Statystyka")
 notebook.add(tab_analiza, text="Analiza")
 
+tryb_stat = False
+opis_stat = """
+📊 STATYSTYKI:
+
+• count – liczba obserwacji
+• mean – średnia
+• std – odchylenie standardowe
+• min/max – zakres
+• 50% – mediana
+
+🧠 Interpretacja:
+• niskie std → dane podobne
+• wysokie std → duża zmienność
+• średnia ≠ mediana → możliwe outliery
+"""
+
+# =================
+# TABELA STATYSTYK (ZAKŁADKA STATYSTYKA)
+# =================
+frame_stat_table = ttk.Frame(tab_stat)
+frame_stat_table.pack(fill="both", expand=True, padx=10, pady=5)
+frame_stat_table.configure(height=400)
+frame_stat_table.pack_propagate(False)
+
+tabela_stat = ttk.Treeview(frame_stat_table)
+tabela_stat.pack(fill="both", expand=True)
 
 # =================
 # TABELA + FUNKCJA
 # =================
 def pokaz(df):
+    global tabela, podsumowanie_label
+
+    if tabela is None:
+        return
+
+    tabela["columns"] = ()
     tabela.delete(*tabela.get_children())
 
     if df is None or df.empty:
@@ -103,26 +138,81 @@ def pokaz(df):
 
     for col in cols:
         tabela.heading(col, text=col)
-        tabela.column(col, width=100)
+        tabela.column(col, width=120, anchor="center")
 
     for i, row in df.iterrows():
         tabela.insert("", "end", values=[i] + list(row))
 
-    info = f"📦 Rekordy: {len(df)} | 📊 Kolumny: {len(df.columns)}"
+def aktualizuj_podsumowanie(df):
+    global podsumowanie_label
 
-    num = df.select_dtypes(include="number")
-    if not num.empty:
-        srednia = round(num.mean().mean(), 2)
-        info += f" | 📈 Średnia: {srednia}"
+    if podsumowanie_label is None:
+        return
+
+    if df is None or df.empty:
+        podsumowanie_label.config(text="Brak danych")
+        return
+
+    tekst = f"📦 Pacjenci: {len(df)}"
+
+    if "wiek" in df.columns:
+        tekst += f" | 🎂 Śr. wiek: {df['wiek'].mean():.1f}"
 
     if "bmi" in df.columns:
-        bmi_mean = round(df["bmi"].mean(), 2)
-        info += f" | ⚖️ BMI: {bmi_mean}"
+        tekst += f" | ⚖️ Śr. BMI: {df['bmi'].mean():.2f}"
 
-    if podsumowanie_label:
-        podsumowanie_label.config(text=info)
+    if "nadcisnienie" in df.columns:
+        nad = df["nadcisnienie"].astype(str).str.lower()
+        proc_nad = nad.isin(["tak", "1", "true"]).sum() / len(df) * 100
+        tekst += f" | ❤️ Nadciśnienie: {proc_nad:.1f}%"
+
+    if "cukrzyca" in df.columns:
+        cuk = df["cukrzyca"].astype(str).str.lower()
+        proc_cuk = (~cuk.isin(["brak", "0", "nie", "nan"])).sum() / len(df) * 100
+        tekst += f" | 🍬 Cukrzyca: {proc_cuk:.1f}%"
+
+    podsumowanie_label.config(text=tekst)
 
 
+def generuj_opis(df):
+    if df is None or df.empty:
+        return "Brak danych do analizy"
+
+    tekst = "📊 Wnioski:\n"
+
+    if "wiek" in df.columns:
+        sredni_wiek = df["wiek"].mean()
+        if sredni_wiek > 50:
+            tekst += "• Populacja raczej starsza\n"
+        else:
+            tekst += "• Populacja raczej młodsza\n"
+
+    if "bmi" in df.columns:
+        bmi = df["bmi"].mean()
+        if bmi > 25:
+            tekst += "• Średnie BMI powyżej normy\n"
+        else:
+            tekst += "• BMI w normie\n"
+
+    if "nadcisnienie" in df.columns:
+        nad = df["nadcisnienie"].astype(str).str.lower()
+        proc = nad.isin(["tak", "1", "true"]).sum() / len(df) * 100
+
+        if proc > 50:
+            tekst += "• Dużo przypadków nadciśnienia\n"
+        else:
+            tekst += "• Niewiele nadciśnienia\n"
+
+    if "cukrzyca" in df.columns:
+        cuk = df["cukrzyca"].astype(str).str.lower()
+        proc = (~cuk.isin(["brak", "0", "nie", "nan"])).sum() / len(df) * 100
+
+        if proc > 30:
+            tekst += "• Wysoki odsetek cukrzycy\n"
+        else:
+            tekst += "• Niski poziom cukrzycy\n"
+
+    return tekst
 # =================
 # TOOLBAR
 # =================
@@ -138,43 +228,35 @@ ttk.Button(toolbar, text="Szukaj",
 ttk.Button(toolbar, text="Wczytaj bazę",
            command=lambda: wczytaj_dane(
                pokaz,
-               lambda d: aktualizuj_statystyki(d)
+               po_wczytaniu,
            )).pack(side="left", padx=5)
 
+def pokaz_statystyki_w_tabie(df):
+    tabela_stat["columns"] = ()
+    tabela_stat.delete(*tabela_stat.get_children())
 
+    if df is None or df.empty:
+        return
+
+    stats = statystyki_opisowe(df)
+    if stats is None:
+        return
+
+    cols = [""] + list(stats.columns)
+    tabela_stat["columns"] = cols
+    tabela_stat["show"] = "headings"
+
+    for col in cols:
+        tabela_stat.heading(col, text=col)
+        tabela_stat.column(col, width=120, anchor="center")
+
+    for i, row in stats.iterrows():
+        tabela_stat.insert("", "end", values=[i] + list(row))
 # =================
 # STATYSTYKI OPISOWE (PRZYWRÓCONE)
 # =================
-tryb_stat = False
-opis_stat = """
-📊 STATYSTYKI OPISOWE:
 
-• count – liczba obserwacji
-• mean – średnia
-• std – odchylenie standardowe
-• min/max – zakres
-• 50% – mediana
 
-🧠 Interpretacja:
-• niskie std → dane podobne
-• wysokie std → duża zmienność
-• średnia ≠ mediana → możliwe outliery
-"""
-def aktualizuj_statystyki(df):
-    if df is None:
-        return
-
-    # generujemy statystyki jako string
-    stats = statystyki_opisowe(df)
-
-    if stats is not None:
-        tekst = stats.to_string()
-    else:
-        tekst = "Brak statystyk"
-
-    stat_label.config(
-        text=tekst + "\n\n" + opis_stat
-    )
 
 def toggle_statystyki():
     global tryb_stat
@@ -185,22 +267,16 @@ def toggle_statystyki():
         return
 
     if not tryb_stat:
-        stats = statystyki_opisowe(df)
-        if stats is not None:
-            pokaz(stats)
-
-        aktualizuj_statystyki(df)
-
-
+        pokaz_statystyki_w_tabie(df)
         btn_stat.config(text="Baza")
         tryb_stat = True
     else:
         pokaz(df)
-        btn_stat.config(text="Statystyki opisowe")
+        btn_stat.config(text="Statystyki")
         tryb_stat = False
 
 
-btn_stat = ttk.Button(toolbar, text="Statystyki opisowe", command=toggle_statystyki)
+btn_stat = ttk.Button(toolbar, text="Statystyki", command=toggle_statystyki)
 btn_stat.pack(side="left", padx=5)
 
 ttk.Button(toolbar, text="Eksport CSV", command=eksport_csv).pack(side="left", padx=5)
@@ -261,7 +337,7 @@ ttk.Button(frame_btn, text="Filtruj",
         var_nad_tak, var_nad_nie,
         entry_min, entry_max,
         pokaz,
-        lambda d: aktualizuj_statystyki(d),
+        po_wczytaniu,
         entry_bmi_min, entry_bmi_max
 )).pack(side="left", padx=5)
 
@@ -272,10 +348,22 @@ ttk.Button(frame_btn, text="Reset",
         var_nad_tak, var_nad_nie,
         entry_min, entry_max,
         pokaz,
-        lambda d: aktualizuj_statystyki(d),
+        po_wczytaniu,
         entry_bmi_min, entry_bmi_max
 )).pack(side="left", padx=5)
 
+def po_wczytaniu(d):
+    aktualizuj_podsumowanie(d)
+
+    try:
+        pokaz_statystyki_w_tabie(d)
+    except Exception as e:
+        log(f"Błąd statystyki: {e}", "ERROR")
+
+    try:
+        opis_label.config(text=generuj_opis(d))
+    except Exception as e:
+        log(f"Błąd opisu: {e}", "ERROR")
 # =================
 # TABELA
 # =================
@@ -300,13 +388,35 @@ tabela.pack(fill="both", expand=True)
 
 
 # =================
-# STAT LABEL (PRZYWRÓCONY)
+# PODSUMOWANIE
 # =================
-ramka_stat = ttk.LabelFrame(tab_dane, text="📊 Statystyki opisowe")
-ramka_stat.pack(fill="both", padx=10, pady=5, expand=False)
+podsumowanie_label = ttk.Label(
+    tab_dane,
+    text="",
+    justify="left",
+    font=("Segoe UI", 10)
+)
+podsumowanie_label.pack(fill="x", padx=10, pady=5)
 
-canvas_stat = ttkb.Canvas(ramka_stat, height=150)
-scroll_stat = ttk.Scrollbar(ramka_stat, orient="vertical", command=canvas_stat.yview)
+opis_label = ttk.Label(
+    tab_dane,
+    text="",
+    justify="left",
+    font=("Segoe UI", 10),
+    foreground="gray"
+)
+opis_label.pack(fill="x", padx=10, pady=(0, 10))
+# =================
+# =================
+# OPIS STATYSTYKI (SCROLL)
+# =================
+ramka_stat_opis = ttk.LabelFrame(tab_stat, text="📊 Statystyki opisowe")
+ramka_stat_opis.pack(fill="x", padx=10, pady=10)
+ramka_stat_opis.configure(height=180)
+ramka_stat_opis.pack_propagate(False)
+
+canvas_stat = ttkb.Canvas(ramka_stat_opis)
+scroll_stat = ttk.Scrollbar(ramka_stat_opis, orient="vertical", command=canvas_stat.yview)
 
 frame_stat_inner = ttk.Frame(canvas_stat)
 
@@ -321,27 +431,15 @@ canvas_stat.configure(yscrollcommand=scroll_stat.set)
 canvas_stat.pack(side="left", fill="both", expand=True)
 scroll_stat.pack(side="right", fill="y")
 
-stat_label = ttk.Label(
+opis_stat_label = ttk.Label(
     frame_stat_inner,
-    text="",
+    text=opis_stat,
     justify="left",
-    font=("Segoe UI", 10)
+    font=("Segoe UI", 11)
 )
-stat_label.pack(anchor="w")
-
-# =================
-# PODSUMOWANIE
-# =================
-podsumowanie_label = ttk.Label(
-    tab_dane,
-    text="",
-    justify="left",
-    font=("Segoe UI", 10)
-)
-podsumowanie_label.pack(fill="x", padx=10, pady=5)
-
+opis_stat_label.pack(anchor="nw")
 
 # =================
 # START
 # =================
-okno.after(100, lambda: log("Aplikacja uruchomiona"))
+okno.after(100, lambda: log("Aplikacja uruchomiona poprawnie"))
