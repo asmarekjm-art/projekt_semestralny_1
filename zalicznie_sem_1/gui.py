@@ -42,7 +42,7 @@ main_pane.add(frame_top, weight=5)
 
 frame_log = ttk.LabelFrame(main_pane, text="Logi")
 main_pane.add(frame_log, weight=0)
-frame_log.configure(height=70)
+frame_log.configure(height=120)
 frame_log.pack_propagate(False)
 
 
@@ -50,7 +50,7 @@ frame_log.pack_propagate(False)
 # LOGI
 # =================
 
-log_box = ttkb.Text(frame_log)
+log_box = ttkb.Text(frame_log, wrap="word")
 log_box.pack(fill="both", expand=True)
 
 last_log = {"msg": None}
@@ -63,6 +63,8 @@ def log(msg, level="INFO"):
     czas = datetime.now().strftime("%H:%M:%S")
     log_box.insert("end", f"[{czas}] {level}: {msg}\n")
     log_box.see("end")
+
+log_box = ttkb.Text(frame_log, wrap="word")
 
 eksport.log = log
 dane.log = log

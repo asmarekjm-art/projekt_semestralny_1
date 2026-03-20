@@ -1,6 +1,8 @@
 # =================
 # IMPORTY
 # =================
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 from tkinter import filedialog
 from datetime import datetime
@@ -100,6 +102,7 @@ def eksport_wykres_pdf():
 
 def raport_pdf():
 
+
     dane = get_dane()
 
     if dane is None or dane.empty:
@@ -110,6 +113,23 @@ def raport_pdf():
         defaultextension=".pdf",
         filetypes=[("PDF", "*.pdf")]
     )
+    df = get_dane()
+
+    textobject.textLine("")
+    textobject.textLine("WNIOSKI:")
+
+    if df is not None:
+
+        if "bmi" in df.columns:
+            bmi_mean = round(df["bmi"].mean(), 2)
+            textobject.textLine(f"- Średnie BMI: {bmi_mean}")
+
+            if bmi_mean > 25:
+                textobject.textLine("- Występuje nadwaga w populacji")
+
+        if "wiek" in df.columns:
+            wiek_mean = round(df["wiek"].mean(), 1)
+            textobject.textLine(f"- Średni wiek: {wiek_mean}")
 
     if not path:
         log("Zapis raportu anulowany")
@@ -134,6 +154,24 @@ def raport_pdf():
     )
 
     elements.append(Spacer(1,20))
+
+    wnioski = []
+
+    if "bmi" in df.columns:
+        bmi_mean = round(df["bmi"].mean(), 2)
+        wnioski.append(f"Średnie BMI: {bmi_mean}")
+
+        if bmi_mean > 25:
+            wnioski.append("Pacjenci mają tendencję do nadwagi.")
+
+    if "wiek" in df.columns:
+        wiek_mean = round(df["wiek"].mean(), 1)
+        wnioski.append(f"Średni wiek: {wiek_mean}")
+
+    textobject.textLine("")
+    textobject.textLine("WNIOSKI:")
+    for w in wnioski:
+        textobject.textLine(f"- {w}")
 
     # =================
     # PODSTAWOWE STATYSTYKI
