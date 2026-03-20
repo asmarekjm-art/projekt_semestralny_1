@@ -3,20 +3,14 @@
 # =================
 import ttkbootstrap as ttkb
 from tkinter import ttk
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from datetime import datetime
-import matplotlib.pyplot as plt
 
 import dane, wykresy, statystyka, eksport
+from gui_wykresy import create_tab_wykresy
 
 from dane import wczytaj_dane, filtruj_dane, wyszukaj, reset_filtry, get_dane
 from statystyka import statystyki_opisowe
-from wykresy import (
-    wykres_bmi,
-    wykres_nadcisnienie_kolowy,
-    wykres_cukrzyca_typ_kolowy,
-    wykres_leki_cukrzyca
-)
+
 from eksport import eksport_csv, raport_pdf
 
 from gui_dane import create_tab_dane
@@ -86,6 +80,14 @@ tab_wykresy = ttk.Frame(notebook)
 tab_stat = ttk.Frame(notebook)
 tab_analiza = ttk.Frame(notebook)
 
+# 👇 TUTAJ DODAJESZ
+create_tab_wykresy(tab_wykresy, log)
+
+# dodanie zakładek
+notebook.add(tab_dane, text="Dane")
+notebook.add(tab_wykresy, text="Wykresy")
+notebook.add(tab_stat, text="Statystyka")
+notebook.add(tab_analiza, text="Analiza")
 # =================
 # LAYOUT TAB_DANE
 # =================
