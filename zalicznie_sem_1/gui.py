@@ -89,19 +89,23 @@ notebook.add(tab_stat, text="Statystyka")
 notebook.add(tab_analiza, text="Analiza")
 
 tryb_stat = False
+
 opis_stat = """
-📊 STATYSTYKI:
+📊 STATYSTYKI OPISOWE:
 
 • count – liczba obserwacji
-• mean – średnia
+• mean – średnia wartość
 • std – odchylenie standardowe
-• min/max – zakres
+• min – wartość minimalna
+• 25% – pierwszy kwartyl
 • 50% – mediana
+• 75% – trzeci kwartyl
+• max – wartość maksymalna
 
 🧠 Interpretacja:
-• niskie std → dane podobne
+• niskie std → dane są podobne
 • wysokie std → duża zmienność
-• średnia ≠ mediana → możliwe outliery
+• mean ≠ median → możliwe wartości odstające
 """
 
 # =================
@@ -255,28 +259,33 @@ def pokaz_statystyki_w_tabie(df):
 # =================
 # STATYSTYKI OPISOWE (PRZYWRÓCONE)
 # =================
-
-
-
 def toggle_statystyki():
     global tryb_stat
 
     df = get_dane()
-    if df is None:
+    if df is None or df.empty:
         log("Brak danych — najpierw wczytaj bazę", "WARNING")
         return
 
     if not tryb_stat:
-        pokaz_statystyki_w_tabie(df)
-        btn_stat.config(text="Baza")
+        stats = statystyki_opisowe(df)
+        if stats is not None:
+            pokaz(stats)
+
+        opis_label.config(text=opis_stat)  # 👈 POKAŻ OPIS
+
+        btn_stat.config(text="Pokaż dane")
         tryb_stat = True
+        log("Wyświetlono statystyki opisowe")
+
     else:
         pokaz(df)
-        btn_stat.config(text="Statystyki")
+        opis_label.config(text=generuj_opis(df))
+        btn_stat.config(text="Statystyki opisowe")
         tryb_stat = False
+        log("Powrót do danych")
 
-
-btn_stat = ttk.Button(toolbar, text="Statystyki", command=toggle_statystyki)
+btn_stat = ttk.Button(toolbar, text="Statystyki opisowe", command=toggle_statystyki)
 btn_stat.pack(side="left", padx=5)
 
 ttk.Button(toolbar, text="Eksport CSV", command=eksport_csv).pack(side="left", padx=5)
@@ -361,7 +370,8 @@ def po_wczytaniu(d):
         log(f"Błąd statystyki: {e}", "ERROR")
 
     try:
-        opis_label.config(text=generuj_opis(d))
+        if not tryb_stat:
+            opis_label.config(text=generuj_opis(d))
     except Exception as e:
         log(f"Błąd opisu: {e}", "ERROR")
 # =================
@@ -433,7 +443,7 @@ scroll_stat.pack(side="right", fill="y")
 
 opis_stat_label = ttk.Label(
     frame_stat_inner,
-    text=opis_stat,
+    text="",
     justify="left",
     font=("Segoe UI", 11)
 )
