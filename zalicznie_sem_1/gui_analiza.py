@@ -5,6 +5,7 @@ from dane import get_dane
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from scipy import stats
 
 
@@ -41,14 +42,29 @@ def create_tab_analiza(parent, log):
         canvas_holder["canvas"] = canvas
 
     # =================
+    # POMOCNICZE
+    # =================
+    def brak_danych():
+        log("Brak danych — wczytaj bazę", "WARNING")
+        label_wynik.config(text="Brak danych")
+
+    # =================
     # 1️⃣ GAUSS
     # =================
     def rozklad_gaussa():
         df = get_dane()
+        if df is None or df.empty:
+            brak_danych()
+            return
+
         if "bmi" not in df.columns:
+            log("Brak kolumny BMI", "ERROR")
             return
 
         data = df["bmi"].dropna()
+        if data.empty:
+            brak_danych()
+            return
 
         fig = plt.Figure(figsize=(6, 4))
         ax = fig.add_subplot(111)
@@ -65,63 +81,105 @@ def create_tab_analiza(parent, log):
         pokaz(fig)
 
         label_wynik.config(
-            text=f"Średnia: {mu:.2f}, Odchylenie: {std:.2f}"
+            text=f"Średnia: {mu:.2f}\nOdchylenie: {std:.2f}"
         )
+
+        log("Wygenerowano rozkład Gaussa")
 
     # =================
     # 2️⃣ T-TEST
     # =================
     def test_t():
         df = get_dane()
+        if df is None or df.empty:
+            brak_danych()
+            return
 
         if not {"plec", "bmi"}.issubset(df.columns):
+            log("Brak wymaganych kolumn (plec, bmi)", "ERROR")
             return
 
         k = df[df["plec"] == "K"]["bmi"].dropna()
         m = df[df["plec"] == "M"]["bmi"].dropna()
 
+        if k.empty or m.empty:
+            brak_danych()
+            return
+
         t, p = stats.ttest_ind(k, m)
 
+        wynik = "Istotna różnica (p < 0.05)" if p < 0.05 else "Brak istotnej różnicy"
+
         label_wynik.config(
-            text=f"t = {t:.3f}, p = {p:.5f}\n"
-                 f"{'Istotna różnica' if p < 0.05 else 'Brak istotnej różnicy'}"
+            text=f"TEST T-STUDENTA\n\n"
+                 f"t = {t:.3f}\n"
+                 f"p = {p:.5f}\n\n"
+                 f"Wniosek: {wynik}"
         )
+
+        log("Wykonano test t-Studenta")
 
     # =================
     # 3️⃣ CHI-KWADRAT
     # =================
     def chi_kwadrat():
         df = get_dane()
+        if df is None or df.empty:
+            brak_danych()
+            return
 
         if not {"plec", "nadcisnienie"}.issubset(df.columns):
+            log("Brak kolumn (plec, nadcisnienie)", "ERROR")
             return
 
         tab = pd.crosstab(df["plec"], df["nadcisnienie"])
 
+        if tab.empty:
+            brak_danych()
+            return
+
         chi2, p, _, _ = stats.chi2_contingency(tab)
 
+        wynik = "Zależność istotna" if p < 0.05 else "Brak zależności"
+
         label_wynik.config(
-            text=f"Chi² = {chi2:.3f}, p = {p:.5f}"
+            text=f"TEST CHI²\n\n"
+                 f"Chi² = {chi2:.3f}\n"
+                 f"p = {p:.5f}\n\n"
+                 f"Wniosek: {wynik}"
         )
+
+        log("Wykonano test chi-kwadrat")
 
     # =================
     # 4️⃣ BOXPLOT
     # =================
     def boxplot():
         df = get_dane()
+        if df is None or df.empty:
+            brak_danych()
+            return
 
         if "bmi" not in df.columns:
+            log("Brak kolumny BMI", "ERROR")
+            return
+
+        data = df["bmi"].dropna()
+        if data.empty:
+            brak_danych()
             return
 
         fig = plt.Figure(figsize=(5, 4))
         ax = fig.add_subplot(111)
 
-        ax.boxplot(df["bmi"].dropna())
+        ax.boxplot(data)
         ax.set_title("Boxplot BMI")
 
         pokaz(fig)
 
-        label_wynik.config(text="Boxplot BMI")
+        label_wynik.config(text="Boxplot BMI — wykrywanie wartości odstających")
+
+        log("Wygenerowano boxplot")
 
     # =================
     # PRZYCISKI

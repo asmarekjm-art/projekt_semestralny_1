@@ -1,21 +1,19 @@
 # =================
 # IMPORTY
 # =================
-import ttkbootstrap as ttkb
-from tkinter import ttk
 from datetime import datetime
+from tkinter import ttk
+import ttkbootstrap as ttkb
 
 import dane, wykresy, statystyka, eksport
 
 from dane import wczytaj_dane, filtruj_dane, wyszukaj, reset_filtry, get_dane
-
+from statystyka import statystyki_opisowe
 from eksport import eksport_csv, raport_pdf
 
 from gui_dane import create_tab_dane
-from gui_analiza import create_tab_analiza
 from gui_wykresy import create_tab_wykresy
-
-podsumowanie_label = None
+from gui_analiza import create_tab_analiza
 
 
 # =================
@@ -55,7 +53,7 @@ def log(msg, level="INFO"):
     last_log["msg"] = msg
 
     if int(log_box.index('end-1c').split('.')[0]) > 500:
-        log_box.delete("1.0", "2.0")
+        log_box.delete("1.0", "50.0")
 
     czas = datetime.now().strftime("%H:%M:%S")
     log_box.insert("end", f"[{czas}] {level}: {msg}\n")
@@ -76,16 +74,16 @@ notebook.pack(fill="both", expand=True)
 
 tab_dane = ttk.Frame(notebook)
 tab_wykresy = ttk.Frame(notebook)
-tab_stat = ttk.Frame(notebook)
 tab_analiza = ttk.Frame(notebook)
-
-
-# dodanie zakładek
-create_tab_wykresy(tab_wykresy, log)
 
 notebook.add(tab_dane, text="Dane")
 notebook.add(tab_wykresy, text="Wykresy")
 notebook.add(tab_analiza, text="Analiza")
+
+create_tab_wykresy(tab_wykresy, log)
+create_tab_analiza(tab_analiza, log)
+
+
 # =================
 # LAYOUT TAB_DANE
 # =================
@@ -98,9 +96,31 @@ frame_filtry.pack(fill="x")
 frame_tabela = ttk.Frame(tab_dane)
 frame_tabela.pack(fill="both", expand=True)
 
-# tabela trafia TYLKO tutaj
 pokaz, podsumowanie, opis, ustaw_opis = create_tab_dane(frame_tabela)
 
+
+# =================
+# TOOLBAR
+# =================
+toolbar = ttk.Frame(frame_toolbar)
+toolbar.pack(fill="x", pady=5)
+
+search_entry = ttk.Entry(toolbar, width=20)
+search_entry.pack(side="left", padx=5)
+search_entry.focus()
+search_entry.bind("<Return>", lambda e: wyszukaj(search_entry, pokaz))
+
+ttk.Button(toolbar, text="Szukaj",
+           command=lambda: wyszukaj(search_entry, pokaz)).pack(side="left", padx=5)
+
+ttk.Button(toolbar, text="Wczytaj bazę",
+           command=lambda: wczytaj_dane(pokaz, po_wczytaniu)
+           ).pack(side="left", padx=5)
+
+
+# =================
+# STATYSTYKI OPISOWE
+# =================
 tryb_stat = False
 
 opis_stat = """
@@ -121,29 +141,6 @@ opis_stat = """
 • mean ≠ median → możliwe wartości odstające
 """
 
-# =================
-# TOOLBAR
-# =================
-toolbar = ttk.Frame(frame_toolbar)
-toolbar.pack(fill="x", pady=5)
-
-search_entry = ttk.Entry(toolbar, width=20)
-search_entry.pack(side="left", padx=5)
-
-ttk.Button(toolbar, text="Szukaj",
-           command=lambda: wyszukaj(search_entry, pokaz)).pack(side="left", padx=5)
-
-ttk.Button(toolbar, text="Wczytaj bazę",
-           command=lambda: wczytaj_dane(
-               pokaz,
-               po_wczytaniu,
-           )).pack(side="left", padx=5)
-
-
-
-# =================
-# STATYSTYKI OPISOWE (PRZYWRÓCONE)
-# =================
 def toggle_statystyki():
     global tryb_stat
 
@@ -155,17 +152,13 @@ def toggle_statystyki():
     if not tryb_stat:
         try:
             stats = statystyki_opisowe(df)
-
             if stats is None or stats.empty:
                 stats = df.select_dtypes(include="number").describe()
-
         except Exception as e:
             log(f"Błąd statystyki: {e}", "ERROR")
             stats = df.select_dtypes(include="number").describe()
 
-        # 🔥 NAJWAŻNIEJSZE
         pokaz(stats)
-
         ustaw_opis(opis_stat)
 
         btn_stat.config(text="Pokaż dane")
@@ -174,11 +167,15 @@ def toggle_statystyki():
 
     else:
         pokaz(df)
-        ustaw_opis(opis(df))
+        try:
+            ustaw_opis(opis(df))
+        except:
+            ustaw_opis("")
 
         btn_stat.config(text="Statystyki opisowe")
         tryb_stat = False
         log("Powrót do danych")
+
 
 btn_stat = ttk.Button(toolbar, text="Statystyki opisowe", command=toggle_statystyki)
 btn_stat.pack(side="left", padx=5)
@@ -256,52 +253,25 @@ ttk.Button(frame_btn, text="Reset",
         entry_bmi_min, entry_bmi_max
 )).pack(side="left", padx=5)
 
+
+# =================
+# CALLBACK
+# =================
 def po_wczytaniu(d):
+    if d is None:
+        return
+
     try:
         podsumowanie(d)
 
-        if not tryb_stat:
+        try:
             ustaw_opis(opis(d))
-        else:
-            ustaw_opis(opis_stat)
+        except:
+            ustaw_opis("")
 
     except Exception as e:
         log(f"Błąd po_wczytaniu: {e}", "ERROR")
 
-
-
-# =================
-# =================
-# OPIS STATYSTYKI (SCROLL)
-# =================
-ramka_stat_opis = ttk.LabelFrame(tab_stat, text="📊 Statystyki opisowe")
-ramka_stat_opis.pack(fill="x", padx=10, pady=10)
-ramka_stat_opis.configure(height=180)
-ramka_stat_opis.pack_propagate(False)
-
-canvas_stat = ttkb.Canvas(ramka_stat_opis)
-scroll_stat = ttk.Scrollbar(ramka_stat_opis, orient="vertical", command=canvas_stat.yview)
-
-frame_stat_inner = ttk.Frame(canvas_stat)
-
-frame_stat_inner.bind(
-    "<Configure>",
-    lambda e: canvas_stat.configure(scrollregion=canvas_stat.bbox("all"))
-)
-
-canvas_stat.create_window((0, 0), window=frame_stat_inner, anchor="nw")
-canvas_stat.configure(yscrollcommand=scroll_stat.set)
-
-canvas_stat.pack(side="left", fill="both", expand=True)
-scroll_stat.pack(side="right", fill="y")
-
-opis_stat_label = ttk.Label(
-    frame_stat_inner,
-    text="",
-    justify="left",
-    font=("Segoe UI", 11)
-)
-opis_stat_label.pack(anchor="nw")
 
 # =================
 # START
