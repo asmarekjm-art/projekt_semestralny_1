@@ -19,7 +19,7 @@ from wykresy import (
     wykres_leki_cukrzyca
 )
 from eksport import eksport_csv, raport_pdf
-
+podsumowanie_label = None
 
 # =================
 # OKNO
@@ -96,7 +96,7 @@ def pokaz(df):
     tabela.delete(*tabela.get_children())
 
     if df is None or df.empty:
-        podsumowanie_label.config(text="Brak danych")
+        podsumowanie_label.config(text="Brak AnyChart")
         return
 
     cols = ["ID"] + list(df.columns)
@@ -124,7 +124,8 @@ def pokaz(df):
         bmi_mean = round(df["bmi"].mean(), 2)
         info += f" | ⚖️ Średnie BMI: {bmi_mean}"
 
-    podsumowanie_label.config(text=info)
+    if podsumowanie_label:
+        podsumowanie_label.config(text=info)
 
 # =================
 # TOOLBAR
@@ -279,9 +280,8 @@ scroll_y.pack(side="right", fill="y")
 scroll_x.pack(side="bottom", fill="x")
 tabela.pack(fill="both", expand=True)
 
-
 # =================
-# OPIS
+# OPIS / STATYSTYKI
 # =================
 
 opis_stat = """
@@ -298,28 +298,53 @@ opis_stat = """
 • wysokie std → duże różnice między pacjentami
 • średnia ≠ mediana → możliwe wartości odstające
 """
-# FILTRY
-ramka_filtry.pack(fill="x", padx=10, pady=5)
 
-# 🔥 STATYSTYKI (TU!)
-ramka_stat = ttk.LabelFrame(tab_dane, text="📊 Statystyki", padding=10)
+ramka_stat = ttk.LabelFrame(
+    tab_dane,
+    text="📊 Statystyki opisowe",
+    padding=5,
+    bootstyle="info"
+)
 ramka_stat.pack(fill="x", padx=10, pady=5)
 
+# =================
+# PODSUMOWANIE
+# =================
+
+podsumowanie_label = ttk.Label(
+    tab_dane,
+    text="",
+    justify="left",
+    font=("Segoe UI", 10)
+)
+podsumowanie_label.pack(fill="x", padx=10, pady=5)
+
+# canvas + scroll
+canvas_stat = ttkb.Canvas(ramka_stat, height=150)
+scroll_stat = ttk.Scrollbar(ramka_stat, orient="vertical", command=canvas_stat.yview)
+
+frame_stat_inner = ttk.Frame(canvas_stat)
+
+frame_stat_inner.bind(
+    "<Configure>",
+    lambda e: canvas_stat.configure(scrollregion=canvas_stat.bbox("all"))
+)
+
+canvas_stat.create_window((0, 0), window=frame_stat_inner, anchor="nw")
+canvas_stat.configure(yscrollcommand=scroll_stat.set)
+
+canvas_stat.pack(side="left", fill="both", expand=True)
+scroll_stat.pack(side="right", fill="y")
+
+# label
 stat_label = ttk.Label(
-    ramka_stat,
+    frame_stat_inner,
     text="",
     justify="left",
     font=("Segoe UI", 10)
 )
 stat_label.pack(anchor="w")
 
-# PODSUMOWANIE
-podsumowanie_label = ttk.Label(tab_dane, text="", justify="left")
-podsumowanie_label.pack(fill="x", pady=5)
-
-# 🔥 TABELA NA KOŃCU
-ramka_tabela = ttk.Frame(tab_dane)
-ramka_tabela.pack(fill="both", expand=True)
 # =================
 # WYKRESY
 # =================
