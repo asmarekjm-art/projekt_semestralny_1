@@ -6,15 +6,14 @@ from tkinter import ttk
 from datetime import datetime
 
 import dane, wykresy, statystyka, eksport
-from gui_wykresy import create_tab_wykresy
 
 from dane import wczytaj_dane, filtruj_dane, wyszukaj, reset_filtry, get_dane
-from statystyka import statystyki_opisowe
 
 from eksport import eksport_csv, raport_pdf
 
 from gui_dane import create_tab_dane
-
+from gui_analiza import create_tab_analiza
+from gui_wykresy import create_tab_wykresy
 
 podsumowanie_label = None
 
@@ -86,7 +85,6 @@ create_tab_wykresy(tab_wykresy, log)
 
 notebook.add(tab_dane, text="Dane")
 notebook.add(tab_wykresy, text="Wykresy")
-notebook.add(tab_stat, text="Statystyka")
 notebook.add(tab_analiza, text="Analiza")
 # =================
 # LAYOUT TAB_DANE
@@ -122,18 +120,6 @@ opis_stat = """
 • wysokie std → duża zmienność
 • mean ≠ median → możliwe wartości odstające
 """
-
-# =================
-# TABELA STATYSTYK (ZAKŁADKA STATYSTYKA)
-# =================
-frame_stat_table = ttk.Frame(tab_stat)
-frame_stat_table.pack(fill="both", expand=True, padx=10, pady=5)
-frame_stat_table.configure(height=400)
-frame_stat_table.pack_propagate(False)
-
-tabela_stat = ttk.Treeview(frame_stat_table)
-tabela_stat.pack(fill="both", expand=True)
-
 
 # =================
 # TOOLBAR
