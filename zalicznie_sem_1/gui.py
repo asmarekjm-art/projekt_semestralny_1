@@ -1,7 +1,6 @@
 # =================
 # IMPORTY
 # =================
-
 import ttkbootstrap as ttkb
 from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -19,12 +18,13 @@ from wykresy import (
     wykres_leki_cukrzyca
 )
 from eksport import eksport_csv, raport_pdf
+
 podsumowanie_label = None
+
 
 # =================
 # OKNO
 # =================
-
 okno = ttkb.Window(themename="flatly")
 okno.title("Analiza pacjentów")
 okno.geometry("1400x900")
@@ -33,7 +33,6 @@ okno.geometry("1400x900")
 # =================
 # LAYOUT
 # =================
-
 main_pane = ttk.PanedWindow(okno, orient="vertical")
 main_pane.pack(fill="both", expand=True)
 
@@ -49,7 +48,6 @@ frame_log.pack_propagate(False)
 # =================
 # LOGI
 # =================
-
 log_box = ttkb.Text(frame_log, wrap="word")
 log_box.pack(fill="both", expand=True)
 
@@ -64,7 +62,6 @@ def log(msg, level="INFO"):
     log_box.insert("end", f"[{czas}] {level}: {msg}\n")
     log_box.see("end")
 
-log_box = ttkb.Text(frame_log, wrap="word")
 
 eksport.log = log
 dane.log = log
@@ -75,7 +72,6 @@ statystyka.log = log
 # =================
 # NOTEBOOK
 # =================
-
 notebook = ttk.Notebook(frame_top)
 notebook.pack(fill="both", expand=True)
 
@@ -93,12 +89,12 @@ notebook.add(tab_analiza, text="Analiza")
 # =================
 # TABELA + FUNKCJA
 # =================
-
 def pokaz(df):
     tabela.delete(*tabela.get_children())
 
     if df is None or df.empty:
-        podsumowanie_label.config(text="Brak AnyChart")
+        if podsumowanie_label:
+            podsumowanie_label.config(text="Brak danych")
         return
 
     cols = ["ID"] + list(df.columns)
@@ -114,25 +110,22 @@ def pokaz(df):
 
     info = f"📦 Rekordy: {len(df)} | 📊 Kolumny: {len(df.columns)}"
 
-    # dodatkowe info jeśli są dane liczbowe
     num = df.select_dtypes(include="number")
-
     if not num.empty:
         srednia = round(num.mean().mean(), 2)
-        info += f" | 📈 Średnia (ogólna): {srednia}"
+        info += f" | 📈 Średnia: {srednia}"
 
-    # jeśli jest BMI
     if "bmi" in df.columns:
         bmi_mean = round(df["bmi"].mean(), 2)
-        info += f" | ⚖️ Średnie BMI: {bmi_mean}"
+        info += f" | ⚖️ BMI: {bmi_mean}"
 
     if podsumowanie_label:
         podsumowanie_label.config(text=info)
 
+
 # =================
 # TOOLBAR
 # =================
-
 toolbar = ttk.Frame(tab_dane)
 toolbar.pack(fill="x", pady=5)
 
@@ -150,9 +143,8 @@ ttk.Button(toolbar, text="Wczytaj bazę",
 
 
 # =================
-# STATYSTYKI OPISOWE
+# STATYSTYKI OPISOWE (PRZYWRÓCONE)
 # =================
-
 tryb_stat = False
 
 def toggle_statystyki():
@@ -168,15 +160,14 @@ def toggle_statystyki():
         if stats is not None:
             pokaz(stats)
 
-        stat_label.config(text=opis_stat)
-        stat_label.pack(fill="x", pady=5)
+        pokaz_statystyki(df, stat_label)
 
+        stat_label.pack(fill="x", pady=5)
         btn_stat.config(text="Baza")
         tryb_stat = True
     else:
         pokaz(df)
         stat_label.pack_forget()
-
         btn_stat.config(text="Statystyki opisowe")
         tryb_stat = False
 
@@ -191,7 +182,6 @@ ttk.Button(toolbar, text="Raport PDF", command=raport_pdf).pack(side="left", pad
 # =================
 # FILTRY
 # =================
-
 ramka_filtry = ttk.LabelFrame(tab_dane, text="🔎 Filtry", padding=10)
 ramka_filtry.pack(fill="x", padx=10, pady=5)
 
@@ -233,36 +223,9 @@ ttk.Checkbutton(ramka_filtry, text="Typ 1", variable=var_cuk_typ1).grid(row=2, c
 ttk.Checkbutton(ramka_filtry, text="Typ 2", variable=var_cuk_typ2).grid(row=2, column=2)
 ttk.Checkbutton(ramka_filtry, text="Brak", variable=var_cuk_brak).grid(row=2, column=3)
 
-frame_btn = ttk.Frame(ramka_filtry)
-frame_btn.grid(row=3, column=0, columnspan=6, pady=10)
-
-ttk.Button(frame_btn, text="Filtruj",
-    command=lambda: filtruj_dane(
-        var_k, var_m,
-        var_cuk_typ1, var_cuk_typ2, var_cuk_brak,
-        var_nad_tak, var_nad_nie,
-        entry_min, entry_max,
-        pokaz,
-        lambda d: pokaz_statystyki(d, stat_label),
-        entry_bmi_min, entry_bmi_max
-)).pack(side="left", padx=5)
-
-ttk.Button(frame_btn, text="Reset",
-    command=lambda: reset_filtry(
-        var_k, var_m,
-        var_cuk_typ1, var_cuk_typ2, var_cuk_brak,
-        var_nad_tak, var_nad_nie,
-        entry_min, entry_max,
-        pokaz,
-        lambda d: pokaz_statystyki(d, stat_label),
-        entry_bmi_min, entry_bmi_max
-)).pack(side="left", padx=5)
-
-
 # =================
 # TABELA
 # =================
-
 ramka_tabela = ttk.Frame(tab_dane)
 ramka_tabela.pack(fill="both", expand=True)
 
@@ -282,37 +245,20 @@ scroll_y.pack(side="right", fill="y")
 scroll_x.pack(side="bottom", fill="x")
 tabela.pack(fill="both", expand=True)
 
+
 # =================
-# OPIS / STATYSTYKI
+# STAT LABEL (PRZYWRÓCONY)
 # =================
-
-opis_stat = """
-📊 STATYSTYKI OPISOWE:
-
-• count → liczba obserwacji
-• mean → średnia wartość
-• std → odchylenie standardowe (zmienność danych)
-• min / max → zakres wartości
-• 50% → mediana (środkowa wartość)
-
-🧠 Interpretacja:
-• niskie std → dane są do siebie podobne
-• wysokie std → duże różnice między pacjentami
-• średnia ≠ mediana → możliwe wartości odstające
-"""
-
-ramka_stat = ttk.LabelFrame(
-    tab_dane,
-    text="📊 Statystyki opisowe",
-    padding=5,
-    bootstyle="info"
-)
+ramka_stat = ttk.LabelFrame(tab_dane, text="📊 Statystyki opisowe")
 ramka_stat.pack(fill="x", padx=10, pady=5)
+
+stat_label = ttk.Label(ramka_stat, text="", justify="left")
+stat_label.pack(anchor="w")
+
 
 # =================
 # PODSUMOWANIE
 # =================
-
 podsumowanie_label = ttk.Label(
     tab_dane,
     text="",
@@ -321,191 +267,8 @@ podsumowanie_label = ttk.Label(
 )
 podsumowanie_label.pack(fill="x", padx=10, pady=5)
 
-# canvas + scroll
-canvas_stat = ttkb.Canvas(ramka_stat, height=150)
-scroll_stat = ttk.Scrollbar(ramka_stat, orient="vertical", command=canvas_stat.yview)
-
-frame_stat_inner = ttk.Frame(canvas_stat)
-
-frame_stat_inner.bind(
-    "<Configure>",
-    lambda e: canvas_stat.configure(scrollregion=canvas_stat.bbox("all"))
-)
-
-canvas_stat.create_window((0, 0), window=frame_stat_inner, anchor="nw")
-canvas_stat.configure(yscrollcommand=scroll_stat.set)
-
-canvas_stat.pack(side="left", fill="both", expand=True)
-scroll_stat.pack(side="right", fill="y")
-
-# label
-stat_label = ttk.Label(
-    frame_stat_inner,
-    text="",
-    justify="left",
-    font=("Segoe UI", 10)
-)
-stat_label.pack(anchor="w")
-
-# =================
-# WYKRESY
-# =================
-
-sub_notebook = ttk.Notebook(tab_wykresy)
-sub_notebook.pack(fill="both", expand=True)
-
-def create_tab(name, func):
-    tab = ttk.Frame(sub_notebook)
-    sub_notebook.add(tab, text=name)
-
-    current_fig = {"fig": None}
-
-    plot_area = ttk.Frame(tab)
-    plot_area.pack(fill="both", expand=True)
-
-    btn_frame = ttk.Frame(tab)
-    btn_frame.pack()
-
-    def draw():
-        for w in plot_area.winfo_children():
-            w.destroy()
-
-        fig = func()
-        if fig is None:
-            ttk.Label(plot_area, text="Brak danych").pack()
-            return
-
-        current_fig["fig"] = fig
-
-        canvas = FigureCanvasTkAgg(fig, master=plot_area)
-        canvas.draw()
-        canvas.get_tk_widget().pack(fill="both", expand=True)
-
-        log(f"Wykres: {name}")
-
-    def save_png():
-        if current_fig["fig"]:
-            current_fig["fig"].savefig(f"{name}.png")
-
-    def save_pdf():
-        if current_fig["fig"]:
-            current_fig["fig"].savefig(f"{name}.pdf")
-
-    ttk.Button(btn_frame, text="Odśwież", command=draw).pack(side="left", padx=5)
-    ttk.Button(btn_frame, text="PNG", command=save_png).pack(side="left", padx=5)
-    ttk.Button(btn_frame, text="PDF", command=save_pdf).pack(side="left", padx=5)
-
-    tab.bind("<Map>", lambda e: draw())
-
-
-create_tab("BMI", wykres_bmi)
-create_tab("Nadciśnienie", wykres_nadcisnienie_kolowy)
-create_tab("Cukrzyca", wykres_cukrzyca_typ_kolowy)
-create_tab("Leki", wykres_leki_cukrzyca)
-
-
-# =================
-# STATYSTYKA
-# =================
-
-sub_stat = ttk.Notebook(tab_stat)
-sub_stat.pack(fill="both", expand=True)
-
-def create_stat_tab(name, func):
-    tab = ttk.Frame(sub_stat)
-    sub_stat.add(tab, text=name)
-
-    plot_area = ttk.Frame(tab)
-    plot_area.pack(fill="both", expand=True)
-
-    def draw():
-        for w in plot_area.winfo_children():
-            w.destroy()
-
-        fig = func()
-        if fig is None:
-            ttk.Label(plot_area, text="Brak danych").pack()
-            return
-
-        canvas = FigureCanvasTkAgg(fig, master=plot_area)
-        canvas.draw()
-        canvas.get_tk_widget().pack(fill="both", expand=True)
-
-    tab.bind("<Map>", lambda e: draw())
-
-
-def stat_hist():
-    df = get_dane()
-    if df is None:
-        return None
-
-    num = df.select_dtypes(include="number")
-    if num.empty:
-        return None
-
-    fig, ax = plt.subplots()
-    num.iloc[:, 0].hist(ax=ax)
-    ax.set_title("Histogram")
-    return fig
-
-
-def stat_box():
-    df = get_dane()
-    if df is None:
-        return None
-
-    if "bmi" not in df.columns:
-        return None
-
-    fig, ax = plt.subplots()
-    df.boxplot(column="bmi", ax=ax)
-    return fig
-
-
-create_stat_tab("Histogram", stat_hist)
-create_stat_tab("Boxplot BMI", stat_box)
-
-
-# =================
-# ANALIZA
-# =================
-
-frame_analiza = ttk.Frame(tab_analiza)
-frame_analiza.pack(fill="both", expand=True)
-
-def analiza():
-    df = get_dane()
-    if df is None:
-        log("Brak danych do analizy", "WARNING")
-        return
-
-    num = df.select_dtypes(include="number")
-    if num.empty:
-        return
-
-    for w in frame_analiza.winfo_children():
-        w.destroy()
-
-    fig, ax = plt.subplots()
-
-    cax = ax.imshow(num.corr(), cmap="coolwarm")
-    fig.colorbar(cax)
-
-    ax.set_xticks(range(len(num.columns)))
-    ax.set_yticks(range(len(num.columns)))
-    ax.set_xticklabels(num.columns, rotation=45)
-    ax.set_yticklabels(num.columns)
-
-    canvas = FigureCanvasTkAgg(fig, master=frame_analiza)
-    canvas.draw()
-    canvas.get_tk_widget().pack(fill="both", expand=True)
-
-
-ttk.Button(frame_analiza, text="Pokaż korelacje", command=analiza).pack()
-
 
 # =================
 # START
 # =================
-
 okno.after(100, lambda: log("Aplikacja uruchomiona"))
