@@ -2,7 +2,6 @@ import ttkbootstrap as ttkb
 from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-from dane import get_dane
 from wykresy import (
     wykres_bmi,
     wykres_nadcisnienie_kolowy,
@@ -17,7 +16,7 @@ def create_tab_wykresy(parent, log):
     # LAYOUT
     # =================
     frame_top = ttk.Frame(parent)
-    frame_top.pack(fill="x")
+    frame_top.pack(fill="x", pady=5)
 
     frame_wykres = ttk.Frame(parent)
     frame_wykres.pack(fill="both", expand=True)
@@ -25,12 +24,18 @@ def create_tab_wykresy(parent, log):
     frame_btn = ttk.Frame(parent)
     frame_btn.pack(fill="x", pady=10)
 
-    canvas_wykres = {"obj": None}
+    canvas_holder = {"canvas": None}
 
     # =================
-    # RYSOWANIE
+    # RENDER WYKRESU
     # =================
     def pokaz_wykres(fig):
+
+        if fig is None:
+            log("Brak wykresu do wyświetlenia", "WARNING")
+            return
+
+        # usuń poprzedni wykres
         for widget in frame_wykres.winfo_children():
             widget.destroy()
 
@@ -38,37 +43,26 @@ def create_tab_wykresy(parent, log):
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
 
-        canvas_wykres["obj"] = canvas
-
-    def get_df():
-        df = get_dane()
-        if df is None or df.empty:
-            log("Brak danych do wykresu", "WARNING")
-            return None
-        return df
+        canvas_holder["canvas"] = canvas
 
     # =================
     # WYKRESY
     # =================
     def rysuj_bmi():
-        df = get_df()
-        if df is not None:
-            pokaz_wykres(wykres_bmi(df))
+        log("Rysowanie BMI")
+        pokaz_wykres(wykres_bmi())
 
     def rysuj_nadcisnienie():
-        df = get_df()
-        if df is not None:
-            pokaz_wykres(wykres_nadcisnienie_kolowy(df))
+        log("Rysowanie nadciśnienia")
+        pokaz_wykres(wykres_nadcisnienie_kolowy())
 
     def rysuj_cukrzyca():
-        df = get_df()
-        if df is not None:
-            pokaz_wykres(wykres_cukrzyca_typ_kolowy(df))
+        log("Rysowanie cukrzycy")
+        pokaz_wykres(wykres_cukrzyca_typ_kolowy())
 
     def rysuj_leki():
-        df = get_df()
-        if df is not None:
-            pokaz_wykres(wykres_leki_cukrzyca(df))
+        log("Rysowanie leków")
+        pokaz_wykres(wykres_leki_cukrzyca())
 
     # =================
     # PRZYCISKI WYBORU
@@ -82,16 +76,20 @@ def create_tab_wykresy(parent, log):
     # EKSPORT
     # =================
     def zapisz_png():
-        canvas = canvas_wykres["obj"]
+        canvas = canvas_holder["canvas"]
         if canvas:
             canvas.figure.savefig("wykres.png")
-            log("Zapisano PNG")
+            log("Zapisano wykres jako PNG")
+        else:
+            log("Najpierw wygeneruj wykres", "WARNING")
 
     def zapisz_pdf():
-        canvas = canvas_wykres["obj"]
+        canvas = canvas_holder["canvas"]
         if canvas:
             canvas.figure.savefig("wykres.pdf")
-            log("Zapisano PDF")
+            log("Zapisano wykres jako PDF")
+        else:
+            log("Najpierw wygeneruj wykres", "WARNING")
 
     ttk.Button(frame_btn, text="Zapisz PNG", command=zapisz_png).pack(side="left", padx=5)
     ttk.Button(frame_btn, text="Zapisz PDF", command=zapisz_pdf).pack(side="left", padx=5)
