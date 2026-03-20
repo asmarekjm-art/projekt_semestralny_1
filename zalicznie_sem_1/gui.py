@@ -374,6 +374,7 @@ def po_wczytaniu(d):
             opis_label.config(text=generuj_opis(d))
     except Exception as e:
         log(f"Błąd opisu: {e}", "ERROR")
+
 # =================
 # TABELA
 # =================
