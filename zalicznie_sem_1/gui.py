@@ -82,12 +82,12 @@ tab_analiza = ttk.Frame(notebook)
 
 
 # dodanie zakładek
+create_tab_wykresy(tab_wykresy, log)
+
 notebook.add(tab_dane, text="Dane")
 notebook.add(tab_wykresy, text="Wykresy")
 notebook.add(tab_stat, text="Statystyka")
 notebook.add(tab_analiza, text="Analiza")
-
-create_tab_wykresy(tab_wykresy, log)
 # =================
 # LAYOUT TAB_DANE
 # =================
