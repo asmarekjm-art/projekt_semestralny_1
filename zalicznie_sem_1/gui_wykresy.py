@@ -1,136 +1,147 @@
+# =================
+# IMPORTY
+# =================
 import ttkbootstrap as ttkb
-from tkinter import ttk
+from tkinter import ttk, filedialog
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from dane import get_dane
 
-from wykresy import (
-    wykres_bmi,
-    wykres_nadcisnienie_kolowy,
-    wykres_cukrzyca_typ_kolowy,
-    wykres_leki_cukrzyca
-)
+import matplotlib.pyplot as plt
+import pandas as pd
 
 
 def create_tab_wykresy(parent, log):
 
-    # =================
-    # LAYOUT
-    # =================
     frame_top = ttk.Frame(parent)
     frame_top.pack(fill="x", pady=5)
 
-    frame_wykres = ttk.Frame(parent)
-    frame_wykres.pack(fill="both", expand=True)
+    frame_plot = ttk.Frame(parent)
+    frame_plot.pack(fill="both", expand=True)
 
-    frame_wnioski = ttk.LabelFrame(parent, text="📊 Wnioski")
-    frame_wnioski.pack(fill="x", padx=10, pady=5)
-
-    label_wnioski = ttk.Label(frame_wnioski, text="", justify="left")
-    label_wnioski.pack(anchor="w", padx=5, pady=5)
-
-    frame_btn = ttk.Frame(parent)
-    frame_btn.pack(fill="x", pady=10)
-
-    canvas_holder = {"canvas": None}
+    current_fig = {"fig": None}
 
     # =================
-    # WNIOSKI
+    # RENDER
     # =================
-    def generuj_wnioski(df, typ):
-        if df is None or df.empty:
-            return "Brak danych"
+    def pokaz(fig):
+        for w in frame_plot.winfo_children():
+            w.destroy()
 
-        if typ == "bmi":
-            if "bmi" in df.columns:
-                bmi = df["bmi"].mean()
-                if bmi < 18.5:
-                    return f"Średnie BMI: {bmi:.2f} → niedożywienie"
-                elif bmi < 25:
-                    return f"Średnie BMI: {bmi:.2f} → norma"
-                elif bmi < 30:
-                    return f"Średnie BMI: {bmi:.2f} → nadwaga"
-                else:
-                    return f"Średnie BMI: {bmi:.2f} → otyłość"
-
-        if typ == "nadcisnienie":
-            if "nadcisnienie" in df.columns:
-                nad = df["nadcisnienie"].astype(str).str.lower()
-                proc = (nad.isin(["tak", "1"]).sum() / len(df)) * 100
-                return f"Nadciśnienie: {proc:.1f}% pacjentów"
-
-        if typ == "cukrzyca":
-            return "Rozkład cukrzycy w populacji"
-
-        if typ == "leki":
-            return "Najczęstsze leki widoczne na wykresie"
-
-        return ""
-
-    # =================
-    # RENDER WYKRESU
-    # =================
-    def pokaz_wykres(fig):
-        if fig is None:
-            log("Brak wykresu", "WARNING")
-            return
-
-        for widget in frame_wykres.winfo_children():
-            widget.destroy()
-
-        import matplotlib.pyplot as plt
-        plt.close("all")
-
-        canvas = FigureCanvasTkAgg(fig, master=frame_wykres)
+        canvas = FigureCanvasTkAgg(fig, master=frame_plot)
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
 
-        canvas_holder["canvas"] = canvas
+        current_fig["fig"] = fig
+
+    def pobierz_df():
+        df = get_dane()
+        if df is None or df.empty:
+            log("Brak danych — wczytaj bazę", "WARNING")
+            return None
+        return df
 
     # =================
     # WYKRESY
     # =================
-    def rysuj_bmi():
-        df = get_dane()
-        pokaz_wykres(wykres_bmi())
-        label_wnioski.config(text=generuj_wnioski(df, "bmi"))
 
-    def rysuj_nadcisnienie():
-        df = get_dane()
-        pokaz_wykres(wykres_nadcisnienie_kolowy())
-        label_wnioski.config(text=generuj_wnioski(df, "nadcisnienie"))
+    def hist_bmi():
+        df = pobierz_df()
+        if df is None or "bmi" not in df.columns:
+            return
 
-    def rysuj_cukrzyca():
-        df = get_dane()
-        pokaz_wykres(wykres_cukrzyca_typ_kolowy())
-        label_wnioski.config(text=generuj_wnioski(df, "cukrzyca"))
+        fig = plt.Figure(figsize=(6, 4))
+        ax = fig.add_subplot(111)
 
-    def rysuj_leki():
-        df = get_dane()
-        pokaz_wykres(wykres_leki_cukrzyca())
-        label_wnioski.config(text=generuj_wnioski(df, "leki"))
+        df["bmi"].dropna().plot(kind="hist", bins=20, ax=ax)
+        ax.set_title("Histogram BMI")
+
+        pokaz(fig)
+
+    def plec_bar():
+        df = pobierz_df()
+        if df is None or "plec" not in df.columns:
+            return
+
+        fig = plt.Figure(figsize=(6, 4))
+        ax = fig.add_subplot(111)
+
+        df["plec"].value_counts().plot(kind="bar", ax=ax)
+        ax.set_title("Płeć pacjentów")
+
+        pokaz(fig)
+
+    def nadcisnienie_bar():
+        df = pobierz_df()
+        if df is None or "nadcisnienie" not in df.columns:
+            return
+
+        fig = plt.Figure(figsize=(6, 4))
+        ax = fig.add_subplot(111)
+
+        df["nadcisnienie"].value_counts().plot(kind="bar", ax=ax)
+        ax.set_title("Nadciśnienie")
+
+        pokaz(fig)
+
+    def cukrzyca_bar():
+        df = pobierz_df()
+        if df is None or "cukrzyca_typ" not in df.columns:
+            return
+
+        fig = plt.Figure(figsize=(6, 4))
+        ax = fig.add_subplot(111)
+
+        df["cukrzyca_typ"].value_counts().plot(kind="bar", ax=ax)
+        ax.set_title("Cukrzyca")
+
+        pokaz(fig)
+
+    def bmi_vs_wiek():
+        df = pobierz_df()
+        if df is None or not {"bmi", "wiek"}.issubset(df.columns):
+            return
+
+        fig = plt.Figure(figsize=(6, 4))
+        ax = fig.add_subplot(111)
+
+        ax.scatter(df["wiek"], df["bmi"])
+        ax.set_title("BMI vs wiek")
+        ax.set_xlabel("Wiek")
+        ax.set_ylabel("BMI")
+
+        pokaz(fig)
 
     # =================
-    # PRZYCISKI
+    # PRZYCISKI WYKRESÓW
     # =================
-    ttk.Button(frame_top, text="BMI", command=rysuj_bmi).pack(side="left", padx=5)
-    ttk.Button(frame_top, text="Nadciśnienie", command=rysuj_nadcisnienie).pack(side="left", padx=5)
-    ttk.Button(frame_top, text="Cukrzyca", command=rysuj_cukrzyca).pack(side="left", padx=5)
-    ttk.Button(frame_top, text="Leki", command=rysuj_leki).pack(side="left", padx=5)
+    ttk.Button(frame_top, text="Histogram BMI", command=hist_bmi).pack(side="left", padx=5)
+    ttk.Button(frame_top, text="Płeć", command=plec_bar).pack(side="left", padx=5)
+    ttk.Button(frame_top, text="Nadciśnienie", command=nadcisnienie_bar).pack(side="left", padx=5)
+    ttk.Button(frame_top, text="Cukrzyca", command=cukrzyca_bar).pack(side="left", padx=5)
+    ttk.Button(frame_top, text="BMI vs wiek", command=bmi_vs_wiek).pack(side="left", padx=5)
 
     # =================
-    # EKSPORT
+    # ZAPIS
     # =================
     def zapisz_png():
-        canvas = canvas_holder["canvas"]
-        if canvas:
-            canvas.figure.savefig("wykres.png")
+        if current_fig["fig"] is None:
+            log("Najpierw wygeneruj wykres!", "WARNING")
+            return
+
+        path = filedialog.asksaveasfilename(defaultextension=".png")
+        if path:
+            current_fig["fig"].savefig(path)
             log("Zapisano PNG")
 
     def zapisz_pdf():
-        canvas = canvas_holder["canvas"]
-        if canvas:
-            canvas.figure.savefig("wykres.pdf")
+        if current_fig["fig"] is None:
+            log("Najpierw wygeneruj wykres!", "WARNING")
+            return
+
+        path = filedialog.asksaveasfilename(defaultextension=".pdf")
+        if path:
+            current_fig["fig"].savefig(path)
             log("Zapisano PDF")
 
-    ttk.Button(frame_btn, text="Zapisz PNG", command=zapisz_png).pack(side="left", padx=5)
-    ttk.Button(frame_btn, text="Zapisz PDF", command=zapisz_pdf).pack(side="left", padx=5)
+    ttk.Button(frame_top, text="Zapisz PNG", command=zapisz_png).pack(side="right", padx=5)
+    ttk.Button(frame_top, text="Zapisz PDF", command=zapisz_pdf).pack(side="right", padx=5)

@@ -1,5 +1,8 @@
+# =================
+# IMPORTY
+# =================
 import ttkbootstrap as ttkb
-from tkinter import ttk
+from tkinter import ttk, filedialog
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from dane import get_dane
 
@@ -8,215 +11,188 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from statystyka import test_t_studenta, test_chi_kwadrat, rozklad_gaussa_parametry
-
 
 def create_tab_analiza(parent, log):
 
-    # =================
-    # LAYOUT
-    # =================
-    frame_top = ttk.Frame(parent)
-    frame_top.pack(fill="x", pady=5)
+    notebook = ttk.Notebook(parent)
+    notebook.pack(fill="both", expand=True)
 
-    frame_wykres = ttk.Frame(parent)
-    frame_wykres.pack(fill="both", expand=True)
+    tab_gauss = ttk.Frame(notebook)
+    tab_t = ttk.Frame(notebook)
+    tab_chi = ttk.Frame(notebook)
 
-    frame_wynik = ttk.LabelFrame(parent, text="📊 Wyniki")
-    frame_wynik.pack(fill="x", padx=10, pady=5)
+    notebook.add(tab_gauss, text="Gauss")
+    notebook.add(tab_t, text="t-Studenta")
+    notebook.add(tab_chi, text="Chi²")
 
-    label_wynik = ttk.Label(frame_wynik, text="", justify="left")
-    label_wynik.pack(anchor="w", padx=5, pady=5)
-
-    canvas_holder = {"canvas": None}
-
-    # =================
-    # RENDER
-    # =================
-    def pokaz(fig):
-        for w in frame_wykres.winfo_children():
-            w.destroy()
-
-        canvas = FigureCanvasTkAgg(fig, master=frame_wykres)
-        canvas.draw()
-        canvas.get_tk_widget().pack(fill="both", expand=True)
-
-        canvas_holder["canvas"] = canvas
-
-    # =================
-    # POMOCNICZE
-    # =================
-    def brak_danych():
-        log("Brak danych — wczytaj bazę", "WARNING")
-        label_wynik.config(text="Brak danych")
-
-    def wyczysc_wykres():
-        for w in frame_wykres.winfo_children():
-            w.destroy()
+    current_fig = {"fig": None}
 
     def pobierz_df():
         df = get_dane()
         if df is None or df.empty:
-            brak_danych()
+            log("Brak danych", "WARNING")
             return None
         return df
 
+    def pokaz(fig, frame):
+        for w in frame.winfo_children():
+            w.destroy()
+
+        canvas = FigureCanvasTkAgg(fig, master=frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
+
+        current_fig["fig"] = fig
+
     # =================
-    # 1️⃣ GAUSS
+    # ZAPIS
     # =================
-    def rozklad_gaussa():
+    def zapisz_png():
+        if current_fig["fig"] is None:
+            log("Najpierw wygeneruj wykres!", "WARNING")
+            return
+
+        path = filedialog.asksaveasfilename(defaultextension=".png")
+        if path:
+            current_fig["fig"].savefig(path)
+            log("Zapisano PNG")
+
+    def zapisz_pdf():
+        if current_fig["fig"] is None:
+            log("Najpierw wygeneruj wykres!", "WARNING")
+            return
+
+        path = filedialog.asksaveasfilename(defaultextension=".pdf")
+        if path:
+            current_fig["fig"].savefig(path)
+            log("Zapisano PDF")
+
+    # =================
+    # GAUSS
+    # =================
+    frame_gauss = ttk.Frame(tab_gauss)
+    frame_gauss.pack(fill="both", expand=True)
+
+    combo_gauss = ttk.Combobox(tab_gauss, state="readonly")
+    combo_gauss.pack(pady=5)
+
+    def gauss_plot():
         df = pobierz_df()
         if df is None:
             return
 
-        if "bmi" not in df.columns:
-            log("Brak kolumny BMI", "ERROR")
+        col = combo_gauss.get()
+        if col == "":
             return
 
-        data = df["bmi"].dropna()
-        if data.empty:
-            brak_danych()
-            return
+        data = df[col].dropna()
 
         fig = plt.Figure(figsize=(6, 4))
         ax = fig.add_subplot(111)
 
         ax.hist(data, bins=20, density=True)
 
-        # dopasowanie rozkładu normalnego
         mu, std = stats.norm.fit(data)
         x = np.linspace(min(data), max(data), 100)
         y = stats.norm.pdf(x, mu, std)
 
         ax.plot(x, y)
-        ax.set_title("Rozkład Gaussa BMI")
+        ax.set_title(f"Rozkład: {col}")
 
-        pokaz(fig)
+        pokaz(fig, frame_gauss)
 
-        label_wynik.config(
-            text=f"Średnia: {mu:.2f}\nOdchylenie: {std:.2f}"
-        )
-
-        log("Wygenerowano rozkład Gaussa")
+    combo_gauss.bind("<<ComboboxSelected>>", lambda e: gauss_plot())
 
     # =================
-    # 2️⃣ T-TEST
+    # T-TEST
     # =================
-    def test_t():
+    frame_t = ttk.Frame(tab_t)
+    frame_t.pack(fill="both", expand=True)
+
+    combo_t = ttk.Combobox(tab_t, state="readonly")
+    combo_t.pack(pady=5)
+
+    def t_plot():
         df = pobierz_df()
         if df is None:
             return
 
-        if not {"plec", "bmi"}.issubset(df.columns):
-            log("Brak kolumn (plec, bmi)", "ERROR")
+        col = combo_t.get()
+        if col == "":
             return
 
-        k = df[df["plec"] == "K"]["bmi"].dropna()
-        m = df[df["plec"] == "M"]["bmi"].dropna()
+        k = df[df["plec"] == "K"][col].dropna()
+        m = df[df["plec"] == "M"][col].dropna()
 
-        if k.empty or m.empty:
-            brak_danych()
-            return
-
-        # statystyka
-        t, p = stats.ttest_ind(k, m)
-        wynik_txt = "Istotna różnica BMI między płciami" if p < 0.05 else "Brak istotnej różnicy BMI między płciami"
-
-        # wykres
         fig = plt.Figure(figsize=(6, 4))
         ax = fig.add_subplot(111)
 
         ax.boxplot([k, m], labels=["K", "M"])
-        ax.set_title("BMI vs Płeć (t-Studenta)")
+        ax.set_title(f"{col} vs płeć")
 
-        # średnie
-        ax.plot([1, 2], [k.mean(), m.mean()], marker="o")
+        pokaz(fig, frame_t)
 
-        pokaz(fig)
-
-        label_wynik.config(
-            text=f"Test t-Studenta\n\n"
-                 f"t = {t:.3f}\n"
-                 f"p = {p:.5f}\n\n"
-                 f"{wynik_txt}"
-        )
-
-        log("Wykonano test t-Studenta z wykresem")
+    combo_t.bind("<<ComboboxSelected>>", lambda e: t_plot())
 
     # =================
-    # 3️⃣ CHI-KWADRAT
+    # CHI²
     # =================
-    def chi_kwadrat():
+    frame_chi = ttk.Frame(tab_chi)
+    frame_chi.pack(fill="both", expand=True)
+
+    combo_x = ttk.Combobox(tab_chi, state="readonly")
+    combo_y = ttk.Combobox(tab_chi, state="readonly")
+
+    combo_x.pack(pady=2)
+    combo_y.pack(pady=2)
+
+    def chi_plot():
         df = pobierz_df()
         if df is None:
             return
 
-        if not {"plec", "nadcisnienie"}.issubset(df.columns):
-            log("Brak kolumn (plec, nadcisnienie)", "ERROR")
-            return
+        x = combo_x.get()
+        y = combo_y.get()
 
-        tabela = pd.crosstab(df["plec"], df["nadcisnienie"])
+        tabela = pd.crosstab(df[x], df[y])
 
-        if tabela.empty:
-            brak_danych()
-            return
-
-        chi2, p, _, _ = stats.chi2_contingency(tabela)
-
-        wynik_txt = "Istotna zależność" if p < 0.05 else "Brak zależności"
-
-        # wykres
         fig = plt.Figure(figsize=(6, 4))
         ax = fig.add_subplot(111)
 
         tabela.plot(kind="bar", ax=ax)
-        ax.set_title("Płeć vs Nadciśnienie (Chi²)")
-        ax.set_ylabel("Liczba pacjentów")
+        ax.set_title(f"{x} vs {y}")
 
-        pokaz(fig)
+        pokaz(fig, frame_chi)
 
-        label_wynik.config(
-            text=f"Test Chi²\n\n"
-                 f"Chi² = {chi2:.3f}\n"
-                 f"p = {p:.5f}\n\n"
-                 f"{wynik_txt}"
-        )
-
-        log("Wykonano test chi-kwadrat z wykresem")
+    combo_x.bind("<<ComboboxSelected>>", lambda e: chi_plot())
+    combo_y.bind("<<ComboboxSelected>>", lambda e: chi_plot())
 
     # =================
-    # 4️⃣ BOXPLOT
+    # REFRESH (NA KLIK)
     # =================
-    def boxplot():
-        df = pobierz_df()
+    def refresh():
+        df = get_dane()
         if df is None:
             return
 
-        if "bmi" not in df.columns:
-            log("Brak kolumny BMI", "ERROR")
-            return
+        num = list(df.select_dtypes(include="number").columns)
+        all_cols = list(df.columns)
 
-        data = df["bmi"].dropna()
-        if data.empty:
-            brak_danych()
-            return
+        combo_gauss["values"] = num
+        combo_t["values"] = num
+        combo_x["values"] = all_cols
+        combo_y["values"] = all_cols
 
-        fig = plt.Figure(figsize=(5, 4))
-        ax = fig.add_subplot(111)
-
-        ax.boxplot(data)
-        ax.set_title("Boxplot BMI")
-
-        pokaz(fig)
-
-        label_wynik.config(text="Boxplot BMI — wykrywanie wartości odstających")
-
-        log("Wygenerowano boxplot")
+    combo_gauss.bind("<Button-1>", lambda e: refresh())
+    combo_t.bind("<Button-1>", lambda e: refresh())
+    combo_x.bind("<Button-1>", lambda e: refresh())
+    combo_y.bind("<Button-1>", lambda e: refresh())
 
     # =================
     # PRZYCISKI
     # =================
-    ttk.Button(frame_top, text="Gauss", command=rozklad_gaussa).pack(side="left", padx=5)
-    ttk.Button(frame_top, text="T-studenta", command=test_t).pack(side="left", padx=5)
-    ttk.Button(frame_top, text="Chi²", command=chi_kwadrat).pack(side="left", padx=5)
-    ttk.Button(frame_top, text="Boxplot", command=boxplot).pack(side="left", padx=5)
+    frame_btn = ttk.Frame(parent)
+    frame_btn.pack(fill="x")
+
+    ttk.Button(frame_btn, text="Zapisz PNG", command=zapisz_png).pack(side="left", padx=5)
+    ttk.Button(frame_btn, text="Zapisz PDF", command=zapisz_pdf).pack(side="left", padx=5)
