@@ -8,6 +8,8 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
+from statystyka import test_t_studenta, test_chi_kwadrat, rozklad_gaussa_parametry
+
 
 def create_tab_analiza(parent, log):
 
@@ -48,13 +50,23 @@ def create_tab_analiza(parent, log):
         log("Brak danych — wczytaj bazę", "WARNING")
         label_wynik.config(text="Brak danych")
 
+    def wyczysc_wykres():
+        for w in frame_wykres.winfo_children():
+            w.destroy()
+
+    def pobierz_df():
+        df = get_dane()
+        if df is None or df.empty:
+            brak_danych()
+            return None
+        return df
+
     # =================
     # 1️⃣ GAUSS
     # =================
     def rozklad_gaussa():
-        df = get_dane()
-        if df is None or df.empty:
-            brak_danych()
+        df = pobierz_df()
+        if df is None:
             return
 
         if "bmi" not in df.columns:
@@ -71,11 +83,12 @@ def create_tab_analiza(parent, log):
 
         ax.hist(data, bins=20, density=True)
 
+        # dopasowanie rozkładu normalnego
         mu, std = stats.norm.fit(data)
         x = np.linspace(min(data), max(data), 100)
-        p = stats.norm.pdf(x, mu, std)
+        y = stats.norm.pdf(x, mu, std)
 
-        ax.plot(x, p)
+        ax.plot(x, y)
         ax.set_title("Rozkład Gaussa BMI")
 
         pokaz(fig)
@@ -90,13 +103,12 @@ def create_tab_analiza(parent, log):
     # 2️⃣ T-TEST
     # =================
     def test_t():
-        df = get_dane()
-        if df is None or df.empty:
-            brak_danych()
+        df = pobierz_df()
+        if df is None:
             return
 
         if not {"plec", "bmi"}.issubset(df.columns):
-            log("Brak wymaganych kolumn (plec, bmi)", "ERROR")
+            log("Brak kolumn (plec, bmi)", "ERROR")
             return
 
         k = df[df["plec"] == "K"]["bmi"].dropna()
@@ -106,58 +118,78 @@ def create_tab_analiza(parent, log):
             brak_danych()
             return
 
+        # statystyka
         t, p = stats.ttest_ind(k, m)
+        wynik_txt = "Istotna różnica BMI między płciami" if p < 0.05 else "Brak istotnej różnicy BMI między płciami"
 
-        wynik = "Istotna różnica (p < 0.05)" if p < 0.05 else "Brak istotnej różnicy"
+        # wykres
+        fig = plt.Figure(figsize=(6, 4))
+        ax = fig.add_subplot(111)
+
+        ax.boxplot([k, m], labels=["K", "M"])
+        ax.set_title("BMI vs Płeć (t-Studenta)")
+
+        # średnie
+        ax.plot([1, 2], [k.mean(), m.mean()], marker="o")
+
+        pokaz(fig)
 
         label_wynik.config(
-            text=f"TEST T-STUDENTA\n\n"
+            text=f"Test t-Studenta\n\n"
                  f"t = {t:.3f}\n"
                  f"p = {p:.5f}\n\n"
-                 f"Wniosek: {wynik}"
+                 f"{wynik_txt}"
         )
 
-        log("Wykonano test t-Studenta")
+        log("Wykonano test t-Studenta z wykresem")
 
     # =================
     # 3️⃣ CHI-KWADRAT
     # =================
     def chi_kwadrat():
-        df = get_dane()
-        if df is None or df.empty:
-            brak_danych()
+        df = pobierz_df()
+        if df is None:
             return
 
         if not {"plec", "nadcisnienie"}.issubset(df.columns):
             log("Brak kolumn (plec, nadcisnienie)", "ERROR")
             return
 
-        tab = pd.crosstab(df["plec"], df["nadcisnienie"])
+        tabela = pd.crosstab(df["plec"], df["nadcisnienie"])
 
-        if tab.empty:
+        if tabela.empty:
             brak_danych()
             return
 
-        chi2, p, _, _ = stats.chi2_contingency(tab)
+        chi2, p, _, _ = stats.chi2_contingency(tabela)
 
-        wynik = "Zależność istotna" if p < 0.05 else "Brak zależności"
+        wynik_txt = "Istotna zależność" if p < 0.05 else "Brak zależności"
+
+        # wykres
+        fig = plt.Figure(figsize=(6, 4))
+        ax = fig.add_subplot(111)
+
+        tabela.plot(kind="bar", ax=ax)
+        ax.set_title("Płeć vs Nadciśnienie (Chi²)")
+        ax.set_ylabel("Liczba pacjentów")
+
+        pokaz(fig)
 
         label_wynik.config(
-            text=f"TEST CHI²\n\n"
+            text=f"Test Chi²\n\n"
                  f"Chi² = {chi2:.3f}\n"
                  f"p = {p:.5f}\n\n"
-                 f"Wniosek: {wynik}"
+                 f"{wynik_txt}"
         )
 
-        log("Wykonano test chi-kwadrat")
+        log("Wykonano test chi-kwadrat z wykresem")
 
     # =================
     # 4️⃣ BOXPLOT
     # =================
     def boxplot():
-        df = get_dane()
-        if df is None or df.empty:
-            brak_danych()
+        df = pobierz_df()
+        if df is None:
             return
 
         if "bmi" not in df.columns:
@@ -185,6 +217,6 @@ def create_tab_analiza(parent, log):
     # PRZYCISKI
     # =================
     ttk.Button(frame_top, text="Gauss", command=rozklad_gaussa).pack(side="left", padx=5)
-    ttk.Button(frame_top, text="t-test", command=test_t).pack(side="left", padx=5)
+    ttk.Button(frame_top, text="T-studenta", command=test_t).pack(side="left", padx=5)
     ttk.Button(frame_top, text="Chi²", command=chi_kwadrat).pack(side="left", padx=5)
     ttk.Button(frame_top, text="Boxplot", command=boxplot).pack(side="left", padx=5)

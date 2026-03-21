@@ -1,8 +1,9 @@
 # =================
 # IMPORTY
 # =================
-
 import pandas as pd
+import numpy as np
+from scipy import stats
 from dane import get_dane
 
 log = print
@@ -11,7 +12,6 @@ log = print
 # =================
 # STATYSTYKI OPISOWE
 # =================
-
 def statystyki_opisowe(df=None):
     try:
         if df is None:
@@ -27,10 +27,10 @@ def statystyki_opisowe(df=None):
             log("Brak danych liczbowych", "WARNING")
             return None
 
-        stats = num.describe().round(2)
+        stats_df = num.describe().round(2)
 
         log("Statystyki opisowe OK", "SUCCESS")
-        return stats
+        return stats_df
 
     except Exception as e:
         log(f"Błąd statystyk: {e}", "ERROR")
@@ -40,7 +40,6 @@ def statystyki_opisowe(df=None):
 # =================
 # PASEK STATYSTYK (GUI)
 # =================
-
 def pokaz_statystyki(df, label):
 
     if df is None or df.empty:
@@ -56,22 +55,17 @@ def pokaz_statystyki(df, label):
         cuk2 = "-"
         nad = "-"
 
-        # wiek
         if "wiek" in df.columns:
             wiek = round(df["wiek"].mean(), 1)
 
-        # BMI (spójność z dane.py!)
         if "bmi" in df.columns:
             bmi = round(df["bmi"].mean(), 1)
 
-        # cukrzyca
         if "cukrzyca_typ" in df.columns:
             total = len(df)
-
             cuk1 = round((df["cukrzyca_typ"] == "typ_1").sum() / total * 100, 1)
             cuk2 = round((df["cukrzyca_typ"] == "typ_2").sum() / total * 100, 1)
 
-        # nadciśnienie
         if "nadcisnienie" in df.columns:
             nad = round((df["nadcisnienie"] == "tak").mean() * 100, 1)
 
@@ -96,7 +90,6 @@ def pokaz_statystyki(df, label):
 # =================
 # STATYSTYKI ROZSZERZONE
 # =================
-
 def statystyki_rozszerzone(df=None):
     try:
         if df is None:
@@ -138,24 +131,23 @@ def statystyki_rozszerzone(df=None):
 # =================
 # TEKST DO RAPORTU
 # =================
-
 def generuj_tekst_raportu(df=None):
     try:
-        stats = statystyki_rozszerzone(df)
+        stats_dict = statystyki_rozszerzone(df)
 
-        if not stats:
+        if not stats_dict:
             return "Brak danych do raportu"
 
         tekst = (
-            f"Liczba pacjentów: {stats.get('liczba_pacjentow','-')}\n"
-            f"Średni wiek: {stats.get('sredni_wiek','-')}\n"
-            f"Mediana wieku: {stats.get('mediana_wieku','-')}\n"
-            f"Średnie BMI: {stats.get('srednie_bmi','-')}\n"
-            f"Min BMI: {stats.get('min_bmi','-')}\n"
-            f"Max BMI: {stats.get('max_bmi','-')}\n"
-            f"Cukrzyca typ 1: {stats.get('cukrzyca_typ1_%','-')}%\n"
-            f"Cukrzyca typ 2: {stats.get('cukrzyca_typ2_%','-')}%\n"
-            f"Nadciśnienie: {stats.get('nadcisnienie_%','-')}%\n"
+            f"Liczba pacjentów: {stats_dict.get('liczba_pacjentow','-')}\n"
+            f"Średni wiek: {stats_dict.get('sredni_wiek','-')}\n"
+            f"Mediana wieku: {stats_dict.get('mediana_wieku','-')}\n"
+            f"Średnie BMI: {stats_dict.get('srednie_bmi','-')}\n"
+            f"Min BMI: {stats_dict.get('min_bmi','-')}\n"
+            f"Max BMI: {stats_dict.get('max_bmi','-')}\n"
+            f"Cukrzyca typ 1: {stats_dict.get('cukrzyca_typ1_%','-')}%\n"
+            f"Cukrzyca typ 2: {stats_dict.get('cukrzyca_typ2_%','-')}%\n"
+            f"Nadciśnienie: {stats_dict.get('nadcisnienie_%','-')}%\n"
         )
 
         log("Raport OK", "SUCCESS")
@@ -167,8 +159,96 @@ def generuj_tekst_raportu(df=None):
 
 
 # =================
-# TEST STATYSTYCZNY
+# TEST T-STUDENTA
 # =================
+def test_t_studenta(df=None):
+    try:
+        if df is None:
+            df = get_dane()
 
-def rysuj_test(*args, **kwargs):
-    log("Test statystyczny jeszcze niezaimplementowany", "WARNING")
+        if df is None or df.empty:
+            return None
+
+        if not {"plec", "bmi"}.issubset(df.columns):
+            return None
+
+        k = df[df["plec"] == "K"]["bmi"].dropna()
+        m = df[df["plec"] == "M"]["bmi"].dropna()
+
+        if k.empty or m.empty:
+            return None
+
+        t, p = stats.ttest_ind(k, m)
+
+        return {
+            "t": round(t, 3),
+            "p": round(p, 5),
+            "istotne": p < 0.05
+        }
+
+    except Exception as e:
+        log(f"Błąd t-test: {e}", "ERROR")
+        return None
+
+
+# =================
+# TEST CHI²
+# =================
+def test_chi_kwadrat(df=None):
+    try:
+        if df is None:
+            df = get_dane()
+
+        if df is None or df.empty:
+            return None
+
+        if not {"plec", "nadcisnienie"}.issubset(df.columns):
+            return None
+
+        tab = pd.crosstab(df["plec"], df["nadcisnienie"])
+
+        if tab.empty:
+            return None
+
+        chi2, p, _, _ = stats.chi2_contingency(tab)
+
+        return {
+            "chi2": round(chi2, 3),
+            "p": round(p, 5),
+            "istotne": p < 0.05
+        }
+
+    except Exception as e:
+        log(f"Błąd chi²: {e}", "ERROR")
+        return None
+
+
+# =================
+# GAUSS (parametry)
+# =================
+def rozklad_gaussa_parametry(df=None):
+    try:
+        if df is None:
+            df = get_dane()
+
+        if df is None or df.empty:
+            return None
+
+        if "bmi" not in df.columns:
+            return None
+
+        data = df["bmi"].dropna()
+
+        if data.empty:
+            return None
+
+        mu, std = stats.norm.fit(data)
+
+        return {
+            "srednia": round(mu, 2),
+            "std": round(std, 2)
+        }
+
+    except Exception as e:
+        log(f"Błąd Gauss: {e}", "ERROR")
+        return None

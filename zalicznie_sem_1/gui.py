@@ -25,29 +25,15 @@ okno.geometry("1400x900")
 
 
 # =================
-# LAYOUT
+# LOG SYSTEM
 # =================
-main_pane = ttk.PanedWindow(okno, orient="vertical")
-main_pane.pack(fill="both", expand=True)
-
-frame_top = ttk.Frame(main_pane)
-main_pane.add(frame_top, weight=5)
-
-frame_log = ttk.LabelFrame(main_pane, text="Logi")
-main_pane.add(frame_log, weight=0)
-frame_log.configure(height=120)
-frame_log.pack_propagate(False)
-
-
-# =================
-# LOGI
-# =================
-log_box = ttkb.Text(frame_log, wrap="word")
-log_box.pack(fill="both", expand=True)
-
+log_box = None
 last_log = {"msg": None}
 
+
 def log(msg, level="INFO"):
+    global log_box
+
     if last_log["msg"] == msg:
         return
     last_log["msg"] = msg
@@ -60,10 +46,29 @@ def log(msg, level="INFO"):
     log_box.see("end")
 
 
+# podpinamy logi do modułów
 eksport.log = log
 dane.log = log
 wykresy.log = log
 statystyka.log = log
+
+
+# =================
+# LAYOUT GŁÓWNY
+# =================
+main_pane = ttk.PanedWindow(okno, orient="vertical")
+main_pane.pack(fill="both", expand=True)
+
+frame_top = ttk.Frame(main_pane)
+main_pane.add(frame_top, weight=5)
+
+frame_log = ttk.LabelFrame(main_pane, text="Logi")
+main_pane.add(frame_log, weight=0)
+frame_log.configure(height=120)
+frame_log.pack_propagate(False)
+
+log_box = ttkb.Text(frame_log, wrap="word")
+log_box.pack(fill="both", expand=True)
 
 
 # =================
@@ -85,7 +90,7 @@ create_tab_analiza(tab_analiza, log)
 
 
 # =================
-# LAYOUT TAB_DANE
+# TAB: DANE
 # =================
 frame_toolbar = ttk.Frame(tab_dane)
 frame_toolbar.pack(fill="x")
@@ -100,6 +105,25 @@ pokaz, podsumowanie, opis, ustaw_opis = create_tab_dane(frame_tabela)
 
 
 # =================
+# CALLBACK PO WCZYTANIU
+# =================
+def po_wczytaniu(d):
+    if d is None:
+        return
+
+    try:
+        podsumowanie(d)
+
+        try:
+            ustaw_opis(opis(d))
+        except Exception:
+            ustaw_opis("")
+
+    except Exception as e:
+        log(f"Błąd po_wczytaniu: {e}", "ERROR")
+
+
+# =================
 # TOOLBAR
 # =================
 toolbar = ttk.Frame(frame_toolbar)
@@ -108,6 +132,7 @@ toolbar.pack(fill="x", pady=5)
 search_entry = ttk.Entry(toolbar, width=20)
 search_entry.pack(side="left", padx=5)
 search_entry.focus()
+
 search_entry.bind("<Return>", lambda e: wyszukaj(search_entry, pokaz))
 
 ttk.Button(toolbar, text="Szukaj",
@@ -123,8 +148,7 @@ ttk.Button(toolbar, text="Wczytaj bazę",
 # =================
 tryb_stat = False
 
-opis_stat = """
-📊 STATYSTYKI OPISOWE:
+opis_stat = """📊 STATYSTYKI OPISOWE:
 
 • count – liczba obserwacji
 • mean – średnia wartość
@@ -140,6 +164,7 @@ opis_stat = """
 • wysokie std → duża zmienność
 • mean ≠ median → możliwe wartości odstające
 """
+
 
 def toggle_statystyki():
     global tryb_stat
@@ -167,9 +192,10 @@ def toggle_statystyki():
 
     else:
         pokaz(df)
+
         try:
             ustaw_opis(opis(df))
-        except:
+        except Exception:
             ustaw_opis("")
 
         btn_stat.config(text="Statystyki opisowe")
@@ -193,6 +219,7 @@ ramka_filtry.pack(fill="x", padx=10, pady=5)
 for i in range(6):
     ramka_filtry.columnconfigure(i, weight=1)
 
+# zmienne
 var_k = ttkb.BooleanVar(value=True)
 var_m = ttkb.BooleanVar(value=True)
 
@@ -203,6 +230,7 @@ var_cuk_brak = ttkb.BooleanVar(value=True)
 var_nad_tak = ttkb.BooleanVar(value=True)
 var_nad_nie = ttkb.BooleanVar(value=True)
 
+# UI
 ttk.Label(ramka_filtry, text="Płeć").grid(row=0, column=0)
 ttk.Checkbutton(ramka_filtry, text="K", variable=var_k).grid(row=0, column=1)
 ttk.Checkbutton(ramka_filtry, text="M", variable=var_m).grid(row=0, column=2)
@@ -252,25 +280,6 @@ ttk.Button(frame_btn, text="Reset",
         po_wczytaniu,
         entry_bmi_min, entry_bmi_max
 )).pack(side="left", padx=5)
-
-
-# =================
-# CALLBACK
-# =================
-def po_wczytaniu(d):
-    if d is None:
-        return
-
-    try:
-        podsumowanie(d)
-
-        try:
-            ustaw_opis(opis(d))
-        except:
-            ustaw_opis("")
-
-    except Exception as e:
-        log(f"Błąd po_wczytaniu: {e}", "ERROR")
 
 
 # =================
