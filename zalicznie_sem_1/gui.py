@@ -63,13 +63,26 @@ frame_top = ttk.Frame(main_pane)
 main_pane.add(frame_top, weight=5)
 
 header = ttk.Frame(frame_top)
-header.pack(fill="x", padx=10, pady=5)
+header.pack(fill="x", padx=15, pady=10)
 
 ttk.Label(
     header,
-    text="JodiApp – Advanced Clinical Analytics",
-    font=("Segoe UI", 16, "bold")
+    text="JodiApp",
+    font=("Segoe UI", 24, "bold")
 ).pack(side="left")
+
+ttk.Label(
+    header,
+    text="  |  Clinical Data Analysis",
+    font=("Segoe UI", 14)
+).pack(side="left")
+
+ttk.Label(
+    header,
+    text="v1.0",
+    font=("Segoe UI", 9),
+    foreground="gray"
+).pack(side="right")
 
 frame_log = ttk.LabelFrame(main_pane, text="Logi")
 main_pane.add(frame_log, weight=0)

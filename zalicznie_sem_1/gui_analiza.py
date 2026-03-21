@@ -47,11 +47,14 @@ def create_tab_analiza(parent, log):
             w.destroy()
 
         container = ttk.Frame(frame)
-        container.pack(expand=True)
+        container.pack(fill="both", expand=True)
+
+        container.rowconfigure(0, weight=1)
+        container.columnconfigure(0, weight=1)
 
         canvas = FigureCanvasTkAgg(fig, master=container)
         canvas.draw()
-        canvas.get_tk_widget().pack()
+        canvas.get_tk_widget().grid(row=0, column=0, sticky="nsew")
 
         current_fig["fig"] = fig
 
@@ -98,7 +101,7 @@ def create_tab_analiza(parent, log):
         if data.empty:
             return
 
-        fig = plt.Figure(figsize=(7, 5))
+        fig = plt.Figure(figsize=(10, 7))
         ax = fig.add_subplot(111)
 
         ax.hist(data, bins=20, density=True)
@@ -141,7 +144,7 @@ def create_tab_analiza(parent, log):
         if len(k) < 2 or len(m) < 2:
             return
 
-        fig = plt.Figure(figsize=(7, 5))
+        fig = plt.Figure(figsize=(10, 7), dpi=120)
         ax = fig.add_subplot(111)
 
         ax.boxplot([k, m], labels=["K", "M"])
@@ -202,7 +205,7 @@ def create_tab_analiza(parent, log):
         data = pd.DataFrame({x: col_x, y: col_y}).dropna()
         tabela = pd.crosstab(data[x], data[y])
 
-        fig = plt.Figure(figsize=(8, 6))
+        fig = plt.Figure(figsize=(10, 7), dpi=120)
         ax = fig.add_subplot(111)
 
         im = ax.imshow(tabela.values)
@@ -265,7 +268,7 @@ def create_tab_analiza(parent, log):
             label_info.config(text="Za mało danych do korelacji")
             return
 
-        fig = plt.Figure(figsize=(7, 5))
+        fig = plt.Figure(figsize=(10, 7), dpi=120)
         ax = fig.add_subplot(111)
 
         ax.scatter(data[x], data[y])
