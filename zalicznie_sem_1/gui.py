@@ -20,8 +20,8 @@ from gui_analiza import create_tab_analiza
 # OKNO
 # =================
 okno = ttkb.Window(themename="flatly")
-okno.title("Analiza pacjentów")
-okno.geometry("1400x900")
+okno.title("JodiApp 📊 | Clinical Data Analysis Suite")
+okno.state("zoomed")
 
 
 # =================
@@ -62,6 +62,15 @@ main_pane.pack(fill="both", expand=True)
 frame_top = ttk.Frame(main_pane)
 main_pane.add(frame_top, weight=5)
 
+header = ttk.Frame(frame_top)
+header.pack(fill="x", padx=10, pady=5)
+
+ttk.Label(
+    header,
+    text="JodiApp – Advanced Clinical Analytics",
+    font=("Segoe UI", 16, "bold")
+).pack(side="left")
+
 frame_log = ttk.LabelFrame(main_pane, text="Logi")
 main_pane.add(frame_log, weight=0)
 frame_log.configure(height=120)
@@ -75,7 +84,7 @@ log_box.pack(fill="both", expand=True)
 # NOTEBOOK
 # =================
 notebook = ttk.Notebook(frame_top)
-notebook.pack(fill="both", expand=True)
+notebook.pack(fill="both", expand=True, padx=5, pady=5)
 
 tab_dane = ttk.Frame(notebook)
 tab_wykresy = ttk.Frame(notebook)
