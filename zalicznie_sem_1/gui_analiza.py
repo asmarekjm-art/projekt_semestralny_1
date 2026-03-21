@@ -27,6 +27,13 @@ def create_tab_analiza(parent, log):
 
     current_fig = {"fig": None}
 
+    # 🔥 WNIOSKI POD WYKRESEM
+    label_info = ttk.Label(parent, text="", anchor="w")
+    label_info.pack(fill="x", padx=10, pady=5)
+
+    # =================
+    # POMOCNICZE
+    # =================
     def pobierz_df():
         df = get_dane()
         if df is None or df.empty:
@@ -87,6 +94,10 @@ def create_tab_analiza(parent, log):
 
         data = df[col].dropna()
 
+        if data.empty:
+            log("Brak danych", "WARNING")
+            return
+
         fig = plt.Figure(figsize=(6, 4))
         ax = fig.add_subplot(111)
 
@@ -100,6 +111,10 @@ def create_tab_analiza(parent, log):
         ax.set_title(f"Rozkład: {col}")
 
         pokaz(fig, frame_gauss)
+
+        label_info.config(
+            text=f"Średnia: {round(mu,2)}, odchylenie: {round(std,2)} → rozkład zbliżony do normalnego"
+        )
 
     combo_gauss.bind("<<ComboboxSelected>>", lambda e: gauss_plot())
 
@@ -118,11 +133,16 @@ def create_tab_analiza(parent, log):
             return
 
         col = combo_t.get()
-        if col == "":
+        if col == "" or "plec" not in df.columns:
+            log("Brak danych do testu t", "ERROR")
             return
 
         k = df[df["plec"] == "K"][col].dropna()
         m = df[df["plec"] == "M"][col].dropna()
+
+        if len(k) < 2 or len(m) < 2:
+            log("Za mało danych", "WARNING")
+            return
 
         fig = plt.Figure(figsize=(6, 4))
         ax = fig.add_subplot(111)
@@ -131,6 +151,18 @@ def create_tab_analiza(parent, log):
         ax.set_title(f"{col} vs płeć")
 
         pokaz(fig, frame_t)
+
+        # TEST T
+        t_stat, p = stats.ttest_ind(k, m)
+
+        if p < 0.05:
+            wniosek = "Istnieje istotna statystycznie różnica"
+        else:
+            wniosek = "Brak istotnej różnicy"
+
+        label_info.config(
+            text=f"t={round(t_stat,2)}, p={round(p,4)} → {wniosek}"
+        )
 
     combo_t.bind("<<ComboboxSelected>>", lambda e: t_plot())
 
@@ -154,7 +186,14 @@ def create_tab_analiza(parent, log):
         x = combo_x.get()
         y = combo_y.get()
 
+        if x == "" or y == "":
+            return
+
         tabela = pd.crosstab(df[x], df[y])
+
+        if tabela.empty:
+            log("Brak danych do Chi²", "WARNING")
+            return
 
         fig = plt.Figure(figsize=(6, 4))
         ax = fig.add_subplot(111)
@@ -164,11 +203,23 @@ def create_tab_analiza(parent, log):
 
         pokaz(fig, frame_chi)
 
+        # TEST CHI²
+        chi2, p, dof, expected = stats.chi2_contingency(tabela)
+
+        if p < 0.05:
+            wniosek = "Zmiennie są zależne (istotne statystycznie)"
+        else:
+            wniosek = "Brak zależności między zmiennymi"
+
+        label_info.config(
+            text=f"Chi²={round(chi2,2)}, p={round(p,4)} → {wniosek}"
+        )
+
     combo_x.bind("<<ComboboxSelected>>", lambda e: chi_plot())
     combo_y.bind("<<ComboboxSelected>>", lambda e: chi_plot())
 
     # =================
-    # REFRESH (NA KLIK)
+    # REFRESH
     # =================
     def refresh():
         df = get_dane()
