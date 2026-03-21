@@ -46,7 +46,6 @@ def log(msg, level="INFO"):
     log_box.see("end")
 
 
-# podpinamy logi do modułów
 eksport.log = log
 dane.log = log
 wykresy.log = log
@@ -62,42 +61,62 @@ main_pane.pack(fill="both", expand=True)
 frame_top = ttk.Frame(main_pane)
 main_pane.add(frame_top, weight=5)
 
+# ================= HEADER (final layout 🔥)
 header = ttk.Frame(frame_top)
-header.pack(fill="x", padx=15, pady=10)
+header.pack(fill="x", pady=10, padx=20)
 
+header.columnconfigure(0, weight=0)
+header.columnconfigure(1, weight=1)
+
+# LEWA STRONA – duże logo tekstowe
+# LOGO TEKSTOWE (startup style 🔥)
+logo_frame = ttk.Frame(header)
+logo_frame.grid(row=0, column=0, sticky="w")
+
+# JODI (ciemne)
 ttk.Label(
-    header,
-    text="JodiApp",
-    font=("Segoe UI", 24, "bold")
+    logo_frame,
+    text="JODI",
+    font=("Bahnschrift SemiBold", 38),
+    foreground="#111827"   # ciemny grafit (premium look)
 ).pack(side="left")
 
+# mały odstęp (kerning vibe)
 ttk.Label(
-    header,
-    text="  |  Clinical Data Analysis",
-    font=("Segoe UI", 14)
+    logo_frame,
+    text=" ",
+    font=("Bahnschrift SemiBold", 38)
 ).pack(side="left")
 
+# APP (kolor akcentu)
 ttk.Label(
-    header,
-    text="v1.0",
-    font=("Segoe UI", 9),
+    logo_frame,
+    text="APP",
+    font=("Bahnschrift SemiBold", 38),
+    foreground="#3b82f6"   # niebieski akcent
+).pack(side="left")
+# PRAWA STRONA – opis
+right = ttk.Frame(header)
+right.grid(row=0, column=1, sticky="w", padx=30)
+
+ttk.Label(
+    right,
+    text="Clinical Data Analysis",
+    font=("Segoe UI", 14),
+    foreground="#1f2937"
+).pack(anchor="w")
+
+ttk.Label(
+    right,
+    text="Analiza danych medycznych i statystycznych",
+    font=("Segoe UI", 10),
     foreground="gray"
-).pack(side="right")
-
-frame_log = ttk.LabelFrame(main_pane, text="Logi")
-main_pane.add(frame_log, weight=0)
-frame_log.configure(height=120)
-frame_log.pack_propagate(False)
-
-log_box = ttkb.Text(frame_log, wrap="word")
-log_box.pack(fill="both", expand=True)
+).pack(anchor="w")
 
 
-# =================
-# NOTEBOOK
-# =================
+# ================= NOTEBOOK =================
 notebook = ttk.Notebook(frame_top)
-notebook.pack(fill="both", expand=True, padx=5, pady=5)
+notebook.pack(fill="both", expand=True)
 
 tab_dane = ttk.Frame(notebook)
 tab_wykresy = ttk.Frame(notebook)
@@ -111,9 +130,17 @@ create_tab_wykresy(tab_wykresy, log)
 create_tab_analiza(tab_analiza, log)
 
 
-# =================
-# TAB: DANE
-# =================
+# ================= LOGI =================
+frame_log = ttk.LabelFrame(main_pane, text="Logi")
+main_pane.add(frame_log, weight=0)
+frame_log.configure(height=120)
+frame_log.pack_propagate(False)
+
+log_box = ttkb.Text(frame_log, wrap="word")
+log_box.pack(fill="both", expand=True)
+
+
+# ================= TAB: DANE =================
 frame_toolbar = ttk.Frame(tab_dane)
 frame_toolbar.pack(fill="x")
 
@@ -126,28 +153,22 @@ frame_tabela.pack(fill="both", expand=True)
 pokaz, podsumowanie, opis, ustaw_opis = create_tab_dane(frame_tabela)
 
 
-# =================
-# CALLBACK PO WCZYTANIU
-# =================
+# ================= CALLBACK =================
 def po_wczytaniu(d):
     if d is None:
         return
 
     try:
         podsumowanie(d)
-
         try:
             ustaw_opis(opis(d))
-        except Exception:
+        except:
             ustaw_opis("")
-
     except Exception as e:
-        log(f"Błąd po_wczytaniu: {e}", "ERROR")
+        log(f"Błąd: {e}", "ERROR")
 
 
-# =================
-# TOOLBAR
-# =================
+# ================= TOOLBAR =================
 toolbar = ttk.Frame(frame_toolbar)
 toolbar.pack(fill="x", pady=5)
 
@@ -165,27 +186,8 @@ ttk.Button(toolbar, text="Wczytaj bazę",
            ).pack(side="left", padx=5)
 
 
-# =================
-# STATYSTYKI OPISOWE
-# =================
+# ================= STATYSTYKI =================
 tryb_stat = False
-
-opis_stat = """📊 STATYSTYKI OPISOWE:
-
-• count – liczba obserwacji
-• mean – średnia wartość
-• std – odchylenie standardowe
-• min – wartość minimalna
-• 25% – pierwszy kwartyl
-• 50% – mediana
-• 75% – trzeci kwartyl
-• max – wartość maksymalna
-
-🧠 Interpretacja:
-• niskie std → dane są podobne
-• wysokie std → duża zmienność
-• mean ≠ median → możliwe wartości odstające
-"""
 
 
 def toggle_statystyki():
@@ -200,26 +202,18 @@ def toggle_statystyki():
         try:
             stats = statystyki_opisowe(df)
             if stats is None or stats.empty:
-                stats = df.select_dtypes(include="number").describe()
+                stats = df.describe()
         except Exception as e:
             log(f"Błąd statystyki: {e}", "ERROR")
-            stats = df.select_dtypes(include="number").describe()
+            stats = df.describe()
 
         pokaz(stats)
-        ustaw_opis(opis_stat)
-
         btn_stat.config(text="Pokaż dane")
         tryb_stat = True
-        log("Wyświetlono statystyki opisowe")
+        log("Wyświetlono statystyki")
 
     else:
         pokaz(df)
-
-        try:
-            ustaw_opis(opis(df))
-        except Exception:
-            ustaw_opis("")
-
         btn_stat.config(text="Statystyki opisowe")
         tryb_stat = False
         log("Powrót do danych")
@@ -232,16 +226,13 @@ ttk.Button(toolbar, text="Eksport CSV", command=eksport_csv).pack(side="left", p
 ttk.Button(toolbar, text="Raport PDF", command=raport_pdf).pack(side="left", padx=5)
 
 
-# =================
-# FILTRY
-# =================
+# ================= FILTRY =================
 ramka_filtry = ttk.LabelFrame(frame_filtry, text="🔎 Filtry", padding=10)
 ramka_filtry.pack(fill="x", padx=10, pady=5)
 
 for i in range(6):
     ramka_filtry.columnconfigure(i, weight=1)
 
-# zmienne
 var_k = ttkb.BooleanVar(value=True)
 var_m = ttkb.BooleanVar(value=True)
 
@@ -252,7 +243,6 @@ var_cuk_brak = ttkb.BooleanVar(value=True)
 var_nad_tak = ttkb.BooleanVar(value=True)
 var_nad_nie = ttkb.BooleanVar(value=True)
 
-# UI
 ttk.Label(ramka_filtry, text="Płeć").grid(row=0, column=0)
 ttk.Checkbutton(ramka_filtry, text="K", variable=var_k).grid(row=0, column=1)
 ttk.Checkbutton(ramka_filtry, text="M", variable=var_m).grid(row=0, column=2)
@@ -304,7 +294,5 @@ ttk.Button(frame_btn, text="Reset",
 )).pack(side="left", padx=5)
 
 
-# =================
-# START
-# =================
+# ================= START =================
 okno.after(100, lambda: log("Aplikacja uruchomiona poprawnie"))
