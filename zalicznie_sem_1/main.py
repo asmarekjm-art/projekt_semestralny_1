@@ -1,3 +1,8 @@
-from gui import okno
+from gui import create_app
 
-okno = okno.mainloop()
+def main():
+    app = create_app()
+    app.mainloop()
+
+if __name__ == "__main__":
+    main()

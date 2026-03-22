@@ -1,232 +1,84 @@
-# =================
-# IMPORTY
-# =================
-from tkinter import ttk, filedialog
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.figure import Figure
-from dane import get_dane
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+
+import tempfile
+import os
 
 
-# =================
-# STYL WYKRESÓW
-# =================
-def styl(ax, title, xlabel="", ylabel=""):
-    ax.set_title(title, fontsize=13, fontweight="bold")
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    ax.grid(True, linestyle="--", alpha=0.4)
+def raport_pdf(fig=None, opis="", tytul="Raport analizy"):
 
-
-def normalize(series):
-    return series.astype(str).str.lower().str.strip()
-
-
-# =================
-# GŁÓWNA FUNKCJA
-# =================
-def create_tab_wykresy(parent, log):
-
-    frame_top = ttk.Frame(parent)
-    frame_top.pack(fill="x", pady=5)
-
-    frame_plot = ttk.Frame(parent)
-    frame_plot.pack(fill="both", expand=True)
-
-    label_info = ttk.Label(parent, text="", anchor="w")
-    label_info.pack(fill="x", padx=10, pady=5)
-
-    current_fig = {"fig": None}
-
+    path = "raport.pdf"
 
     # =================
-    # POMOCNICZE
+    # FONT (polskie znaki)
     # =================
-    def pokaz(fig):
-        for w in frame_plot.winfo_children():
-            w.destroy()
+    try:
+        pdfmetrics.registerFont(TTFont("DejaVu", "DejaVuSans.ttf"))
+        font = "DejaVu"
+    except:
+        font = "Helvetica"
 
-        canvas = FigureCanvasTkAgg(fig, master=frame_plot)
-        canvas.draw()
-        canvas.get_tk_widget().pack(fill="both", expand=True)
+    styles = getSampleStyleSheet()
 
-        current_fig["fig"] = fig
+    styles.add(ParagraphStyle(
+        name="TitleCustom",
+        fontName=font,
+        fontSize=18,
+        spaceAfter=15
+    ))
 
-    def pobierz_df():
-        df = get_dane()
-        if df is None or df.empty:
-            log("Brak danych — wczytaj bazę", "WARNING")
-            return None
-        return df
+    styles.add(ParagraphStyle(
+        name="NormalCustom",
+        fontName=font,
+        fontSize=11,
+        leading=14
+    ))
 
+    doc = SimpleDocTemplate(path, pagesize=A4)
 
-    # =================
-    # WYKRESY
-    # =================
-
-    def hist_bmi():
-        df = pobierz_df()
-        if df is None or "bmi" not in df.columns:
-            log("Brak kolumny BMI", "ERROR")
-            return
-
-        data = df["bmi"].dropna()
-        if data.empty:
-            log("Brak danych BMI", "WARNING")
-            return
-
-        fig = Figure(figsize=(8, 5))
-        ax = fig.add_subplot(111)
-
-        ax.hist(data, bins=20)
-
-        styl(ax, "Rozkład BMI pacjentów", "BMI", "Liczba")
-        pokaz(fig)
-
-        label_info.config(text=f"Średnie BMI: {round(data.mean(),1)}")
-
-
-    def plec_bar():
-        df = pobierz_df()
-        if df is None or "plec" not in df.columns:
-            log("Brak kolumny płeć", "ERROR")
-            return
-
-        counts = df["plec"].dropna().value_counts()
-
-        fig = Figure(figsize=(8, 5))
-        ax = fig.add_subplot(111)
-
-        ax.bar(counts.index.astype(str), counts.values)
-
-        styl(ax, "Struktura płci pacjentów", "Płeć", "Liczba")
-        pokaz(fig)
-
-        label_info.config(text=f"Liczba kategorii: {len(counts)}")
-
-
-    def nadcisnienie_bar():
-        df = pobierz_df()
-        if df is None or "nadcisnienie" not in df.columns:
-            log("Brak kolumny nadciśnienie", "ERROR")
-            return
-
-        nad = normalize(df["nadcisnienie"])
-        counts = nad.value_counts()
-
-        fig = Figure(figsize=(8, 5))
-        ax = fig.add_subplot(111)
-
-        ax.bar(counts.index, counts.values)
-
-        styl(ax, "Występowanie nadciśnienia", "Status", "Liczba")
-        pokaz(fig)
-
-        tak = nad.isin(["tak", "1", "true", "yes"]).sum()
-        proc = round((tak / len(nad)) * 100, 1)
-
-        label_info.config(text=f"Nadciśnienie: {proc}%")
-
-
-    def cukrzyca_bar():
-        df = pobierz_df()
-        if df is None:
-            return
-
-        col = next((c for c in df.columns if "cukr" in c.lower()), None)
-
-        if col is None:
-            log("Nie znaleziono kolumny cukrzyca", "ERROR")
-            return
-
-        counts = df[col].dropna().value_counts()
-
-        fig = Figure(figsize=(8, 5))
-        ax = fig.add_subplot(111)
-
-        ax.bar(counts.index.astype(str), counts.values)
-
-        styl(ax, "Typy cukrzycy", "Typ", "Liczba")
-        pokaz(fig)
-
-        tekst = ", ".join([f"{k}: {v}" for k, v in counts.items()])
-        label_info.config(text=tekst)
-
-
-    def bmi_vs_wiek():
-        df = pobierz_df()
-        if df is None or "bmi" not in df.columns or "wiek" not in df.columns:
-            log("Brak kolumn BMI lub wiek", "ERROR")
-            return
-
-        data = df[["wiek", "bmi"]].dropna()
-
-        if len(data) < 2:
-            log("Za mało danych", "WARNING")
-            return
-
-        fig = Figure(figsize=(8, 5))
-        ax = fig.add_subplot(111)
-
-        ax.scatter(data["wiek"], data["bmi"])
-
-        styl(ax, "BMI vs wiek", "Wiek", "BMI")
-        pokaz(fig)
-
-        label_info.config(text="Zależność BMI od wieku")
-
+    story = []
 
     # =================
-    # PRZYCISKI
+    # TYTUŁ
     # =================
-    ttk.Button(frame_top, text="Histogram BMI", command=hist_bmi).pack(side="left", padx=5)
-    ttk.Button(frame_top, text="Płeć", command=plec_bar).pack(side="left", padx=5)
-    ttk.Button(frame_top, text="Nadciśnienie", command=nadcisnienie_bar).pack(side="left", padx=5)
-    ttk.Button(frame_top, text="Cukrzyca", command=cukrzyca_bar).pack(side="left", padx=5)
-    ttk.Button(frame_top, text="BMI vs wiek", command=bmi_vs_wiek).pack(side="left", padx=5)
+    story.append(Paragraph(tytul, styles["TitleCustom"]))
+    story.append(Spacer(1, 10))
 
+    tmp_path = None
 
-    # =================
-    # ZAPIS (NAPRAWIONY 🔥)
-    # =================
-    def zapisz_png():
-        if current_fig["fig"] is None:
-            log("Najpierw wygeneruj wykres!", "WARNING")
-            return
+    try:
+        # =================
+        # WYKRES
+        # =================
+        if fig is not None:
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+            tmp_path = tmp.name
+            tmp.close()
 
-        path = filedialog.asksaveasfilename(
-            defaultextension=".png",
-            filetypes=[("PNG files", "*.png")]
-        )
+            fig.savefig(tmp_path, dpi=150, bbox_inches="tight")
 
-        if not path:
-            return
+            img = Image(tmp_path)
+            img.drawWidth = 450
+            img.drawHeight = 280
 
-        if not path.endswith(".png"):
-            path += ".png"
+            story.append(img)
+            story.append(Spacer(1, 20))
 
-        current_fig["fig"].savefig(path)
-        log("Zapisano PNG")
+        # =================
+        # OPIS / WNIOSKI
+        # =================
+        if opis:
+            story.append(Paragraph("<b>Wnioski:</b>", styles["NormalCustom"]))
+            story.append(Spacer(1, 8))
+            story.append(Paragraph(opis, styles["NormalCustom"]))
 
+        doc.build(story)
 
-    def zapisz_pdf():
-        if current_fig["fig"] is None:
-            log("Najpierw wygeneruj wykres!", "WARNING")
-            return
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
-        path = filedialog.asksaveasfilename(
-            defaultextension=".pdf",
-            filetypes=[("PDF files", "*.pdf")]
-        )
-
-        if not path:
-            return
-
-        if not path.endswith(".pdf"):
-            path += ".pdf"
-
-        current_fig["fig"].savefig(path)
-        log("Zapisano PDF")
-
-
-    ttk.Button(frame_top, text="Zapisz PNG", command=zapisz_png).pack(side="right", padx=5)
-    ttk.Button(frame_top, text="Zapisz PDF", command=zapisz_pdf).pack(side="right", padx=5)
+    return path

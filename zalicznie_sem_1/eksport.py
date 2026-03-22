@@ -3,10 +3,14 @@
 # =================
 from tkinter import filedialog
 from datetime import datetime
+import os
 
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
+
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 from dane import get_dane
 
@@ -14,27 +18,46 @@ import matplotlib.pyplot as plt
 
 
 # =================
-# LOG (nadpisywany w gui)
+# FONT (polskie znaki)
+# =================
+try:
+    pdfmetrics.registerFont(TTFont('DejaVu', 'DejaVuSans.ttf'))
+except:
+    pass
+
+
+# =================
+# LOG
 # =================
 def log(msg, level="INFO"):
     print(f"[{level}] {msg}")
 
 
 # =================
-# USUWANIE POLSKICH ZNAKÓW
+# 🔥 UNIWERSALNY ZAPIS WYKRESU
 # =================
-def usun_polskie_znaki(tekst):
-    znaki = {
-        "ą": "a", "ć": "c", "ę": "e", "ł": "l",
-        "ń": "n", "ó": "o", "ś": "s", "ż": "z", "ź": "z",
-        "Ą": "A", "Ć": "C", "Ę": "E", "Ł": "L",
-        "Ń": "N", "Ó": "O", "Ś": "S", "Ż": "Z", "Ź": "Z"
-    }
+def zapisz_figure(fig, log):
 
-    for pl, en in znaki.items():
-        tekst = tekst.replace(pl, en)
+    if fig is None:
+        log("Brak wykresu!", "WARNING")
+        return
 
-    return tekst
+    path = filedialog.asksaveasfilename(
+        defaultextension=".png",
+        filetypes=[
+            ("PNG", "*.png"),
+            ("PDF", "*.pdf")
+        ]
+    )
+
+    if not path:
+        return
+
+    try:
+        fig.savefig(path, dpi=300)
+        log(f"Zapisano: {path}")
+    except Exception as e:
+        log(f"Błąd zapisu: {e}", "ERROR")
 
 
 # =================
@@ -49,6 +72,7 @@ def eksport_csv():
         return
 
     path = filedialog.asksaveasfilename(
+        initialfile=f"dane_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
         defaultextension=".csv",
         filetypes=[("CSV", "*.csv")]
     )
@@ -66,43 +90,6 @@ def eksport_csv():
 
 
 # =================
-# ZAPIS WYKRESU
-# =================
-def zapisz_wykres(ext):
-
-    fig = plt.gcf()
-
-    if fig is None or not fig.get_axes():
-        log("Brak wykresu do zapisania", "ERROR")
-        return
-
-    path = filedialog.asksaveasfilename(
-        defaultextension=ext,
-        filetypes=[(ext.upper(), f"*{ext}")]
-    )
-
-    if not path:
-        log("Zapis wykresu anulowany")
-        return
-
-    try:
-        fig.tight_layout()
-        fig.savefig(path, dpi=300)
-        log(f"Wykres zapisany: {path}")
-
-    except Exception as e:
-        log(f"Błąd zapisu wykresu: {e}", "ERROR")
-
-
-def eksport_wykres_png():
-    zapisz_wykres(".png")
-
-
-def eksport_wykres_pdf():
-    zapisz_wykres(".pdf")
-
-
-# =================
 # RAPORT PDF
 # =================
 def raport_pdf():
@@ -114,6 +101,7 @@ def raport_pdf():
         return
 
     path = filedialog.asksaveasfilename(
+        initialfile=f"raport_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
         defaultextension=".pdf",
         filetypes=[("PDF", "*.pdf")]
     )
@@ -123,20 +111,22 @@ def raport_pdf():
         return
 
     styles = getSampleStyleSheet()
+
+    for style in ["Normal", "Title", "Heading2"]:
+        styles[style].fontName = "DejaVu"
+
     elements = []
 
     # =================
     # TYTUŁ
     # =================
     elements.append(
-        Paragraph(usun_polskie_znaki("Raport analizy danych pacjentów"), styles["Title"])
+        Paragraph("Raport analizy danych pacjentów", styles["Title"])
     )
 
     elements.append(
         Paragraph(
-            usun_polskie_znaki(
-                f"Data wygenerowania raportu: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-            ),
+            f"Data wygenerowania raportu: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
             styles["Normal"]
         )
     )
@@ -150,23 +140,19 @@ def raport_pdf():
 
     if "bmi" in dane.columns:
         bmi_mean = round(dane["bmi"].mean(), 2)
-        wnioski.append(f"Srednie BMI: {bmi_mean}")
+        wnioski.append(f"Średnie BMI: {bmi_mean}")
 
         if bmi_mean > 25:
-            wnioski.append("Pacjenci maja tendencje do nadwagi.")
+            wnioski.append("Pacjenci mają tendencję do nadwagi.")
 
     if "wiek" in dane.columns:
         wiek_mean = round(dane["wiek"].mean(), 1)
-        wnioski.append(f"Sredni wiek: {wiek_mean}")
+        wnioski.append(f"Średni wiek: {wiek_mean}")
 
-    elements.append(
-        Paragraph(usun_polskie_znaki("Wnioski:"), styles["Heading2"])
-    )
+    elements.append(Paragraph("Wnioski:", styles["Heading2"]))
 
     for w in wnioski:
-        elements.append(
-            Paragraph(usun_polskie_znaki(f"- {w}"), styles["Normal"])
-        )
+        elements.append(Paragraph(f"- {w}", styles["Normal"]))
 
     elements.append(Spacer(1, 20))
 
@@ -174,78 +160,61 @@ def raport_pdf():
     # STATYSTYKI
     # =================
     elements.append(
-        Paragraph(usun_polskie_znaki(f"Liczba pacjentow: {len(dane)}"), styles["Normal"])
+        Paragraph(f"Liczba pacjentów: {len(dane)}", styles["Normal"])
     )
 
     if "wiek" in dane.columns:
         elements.append(
-            Paragraph(
-                usun_polskie_znaki(f"Sredni wiek: {dane['wiek'].mean():.1f}"),
-                styles["Normal"]
-            )
+            Paragraph(f"Średni wiek: {dane['wiek'].mean():.1f}", styles["Normal"])
         )
 
     if "bmi" in dane.columns:
         elements.append(
-            Paragraph(
-                usun_polskie_znaki(f"Srednie BMI: {dane['bmi'].mean():.2f}"),
-                styles["Normal"]
-            )
-        )
-
-    if "cukrzyca" in dane.columns:
-        proc = (dane["cukrzyca"] == "tak").mean() * 100
-        elements.append(
-            Paragraph(
-                usun_polskie_znaki(f"Cukrzyca w populacji: {proc:.1f}%"),
-                styles["Normal"]
-            )
-        )
-
-    if "nadcisnienie" in dane.columns:
-        proc = (dane["nadcisnienie"] == "tak").mean() * 100
-        elements.append(
-            Paragraph(
-                usun_polskie_znaki(f"Nadcisnienie w populacji: {proc:.1f}%"),
-                styles["Normal"]
-            )
+            Paragraph(f"Średnie BMI: {dane['bmi'].mean():.2f}", styles["Normal"])
         )
 
     elements.append(Spacer(1, 20))
 
     # =================
-    # PRZYKŁADOWE DANE
+    # WYKRES
     # =================
-    elements.append(
-        Paragraph(usun_polskie_znaki("Przykladowe dane:"), styles["Heading2"])
-    )
+    try:
+        fig = plt.gcf()
 
-    sample = dane.head(5)
+        if fig and fig.get_axes():
+            temp_path = "temp_plot.png"
+            fig.savefig(temp_path, dpi=300)
 
-    for _, row in sample.iterrows():
-        tekst = ", ".join([f"{col}: {row[col]}" for col in sample.columns])
-        elements.append(
-            Paragraph(usun_polskie_znaki(tekst), styles["Normal"])
-        )
+            elements.append(Paragraph("Wykres:", styles["Heading2"]))
+            elements.append(Image(temp_path, width=400, height=300))
+            elements.append(Spacer(1, 20))
 
-    elements.append(Spacer(1, 20))
+    except Exception as e:
+        log(f"Nie udało się dodać wykresu: {e}", "ERROR")
 
     # =================
     # KOMENTARZ
     # =================
     elements.append(
-        Paragraph(usun_polskie_znaki("Komentarz analityczny"), styles["Heading2"])
+        Paragraph("Komentarz analityczny", styles["Heading2"])
     )
 
     komentarz = generuj_komentarz(dane)
 
     elements.append(
-        Paragraph(usun_polskie_znaki(komentarz), styles["Normal"])
+        Paragraph(komentarz, styles["Normal"])
     )
 
+    # =================
+    # ZAPIS
+    # =================
     try:
         doc = SimpleDocTemplate(path, pagesize=A4)
         doc.build(elements)
+
+        if os.path.exists("temp_plot.png"):
+            os.remove("temp_plot.png")
+
         log(f"Raport PDF zapisany: {path}")
 
     except Exception as e:
@@ -263,23 +232,51 @@ def generuj_komentarz(dane):
         bmi = dane["bmi"].mean()
 
         if bmi > 30:
-            komentarz.append("BMI wskazuje na otylosc.")
+            komentarz.append("BMI wskazuje na otyłość.")
         elif bmi > 25:
-            komentarz.append("BMI wskazuje na nadwage.")
+            komentarz.append("BMI wskazuje na nadwagę.")
         else:
             komentarz.append("BMI w normie.")
 
     if "nadcisnienie" in dane.columns:
-        proc = (dane["nadcisnienie"] == "tak").mean() * 100
+        proc = (dane["nadcisnienie"].fillna("nie") == "tak").mean() * 100
         if proc > 30:
-            komentarz.append("Wysoki poziom nadcisnienia.")
+            komentarz.append("Wysoki poziom nadciśnienia.")
 
     if "cukrzyca" in dane.columns:
-        proc = (dane["cukrzyca"] == "tak").mean() * 100
+        proc = (dane["cukrzyca"].fillna("nie") == "tak").mean() * 100
         if proc > 15:
-            komentarz.append("Podwyzszony poziom cukrzycy.")
+            komentarz.append("Podwyższony poziom cukrzycy.")
+
+    if "wiek" in dane.columns and "bmi" in dane.columns:
+        try:
+            korelacja = dane["wiek"].corr(dane["bmi"])
+            komentarz.append(f"Korelacja wiek-BMI: {korelacja:.2f}")
+        except:
+            pass
 
     if not komentarz:
-        komentarz.append("Brak istotnych odchylen.")
+        komentarz.append("Brak istotnych odchyleń.")
+
+    # =================
+    # 🔥 ZAPIS (CSV lub PDF)
+    # =================
+def zapisz_dane_lub_raport(log):
+
+    path = filedialog.asksaveasfilename(
+        defaultextension=".csv",
+        filetypes=[
+            ("CSV (dane)", "*.csv"),
+            ("PDF (raport)", "*.pdf")
+        ]
+    )
+
+    if not path:
+        return
+
+    if path.endswith(".csv"):
+        eksport_csv()
+    elif path.endswith(".pdf"):
+        raport_pdf()
 
     return " ".join(komentarz)

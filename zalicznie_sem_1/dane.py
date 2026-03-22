@@ -1,7 +1,6 @@
 # =================
 # IMPORTY
 # =================
-
 import pandas as pd
 from tkinter import filedialog
 
@@ -10,7 +9,6 @@ pd.options.mode.chained_assignment = None
 # =================
 # GLOBALNE
 # =================
-
 df = pd.DataFrame()
 df_filtered = None
 
@@ -18,7 +16,6 @@ df_filtered = None
 # =================
 # LOG
 # =================
-
 def log(msg, level="INFO"):
     print(f"[{level}] {msg}")
 
@@ -26,15 +23,23 @@ def log(msg, level="INFO"):
 # =================
 # GET DATA
 # =================
-
 def get_dane():
     return df_filtered if df_filtered is not None else df
 
 
 # =================
+# HELPER
+# =================
+def safe_float(val):
+    try:
+        return float(val)
+    except:
+        return None
+
+
+# =================
 # NADCIŚNIENIE
 # =================
-
 def nadcisnienie(val):
     if not isinstance(val, str):
         return "nie"
@@ -50,7 +55,6 @@ def nadcisnienie(val):
 # =================
 # WCZYTYWANIE
 # =================
-
 def wczytaj_dane(pokaz, pokaz_stat):
 
     global df, df_filtered
@@ -65,13 +69,21 @@ def wczytaj_dane(pokaz, pokaz_stat):
         df = pd.read_csv(path, sep=None, engine="python")
         df_filtered = None
 
+        # 🔥 lepsze typy danych
+        df = df.convert_dtypes()
+
         # ujednolicenie kolumn
         df.columns = df.columns.str.lower()
+
+        # 🔥 opcjonalnie: sortowanie kolumn
+        df = df.reindex(sorted(df.columns), axis=1)
 
         log(f"Wczytano {len(df)} rekordów")
         log(f"Kolumny: {list(df.columns)}")
 
-        # konwersja liczb
+        # =================
+        # KONWERSJE
+        # =================
         for col in ["wiek", "waga", "wzrost"]:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
@@ -84,7 +96,7 @@ def wczytaj_dane(pokaz, pokaz_stat):
         if "cisnienie" in df.columns:
             df["nadcisnienie"] = df["cisnienie"].apply(nadcisnienie)
 
-        # normalizacja cukrzycy 🔥
+        # cukrzyca
         if "cukrzyca_typ" in df.columns:
             df["cukrzyca_typ"] = (
                 df["cukrzyca_typ"]
@@ -97,6 +109,7 @@ def wczytaj_dane(pokaz, pokaz_stat):
         pokaz_stat(df)
 
         log("Dane wczytane OK")
+        log("Dane gotowe do analizy i wizualizacji 📊")
 
     except Exception as e:
         log("Błąd wczytywania", "ERROR")
@@ -106,7 +119,6 @@ def wczytaj_dane(pokaz, pokaz_stat):
 # =================
 # FILTROWANIE
 # =================
-
 def filtruj_dane(
     var_k, var_m,
     var_cuk_typ1, var_cuk_typ2, var_cuk_brak,
@@ -128,22 +140,29 @@ def filtruj_dane(
     # WIEK
     # =================
     if "wiek" in dane.columns:
-        if entry_min.get().isdigit():
-            dane = dane[dane["wiek"] >= int(entry_min.get())]
+        min_wiek = safe_float(entry_min.get())
+        max_wiek = safe_float(entry_max.get())
 
-        if entry_max.get().isdigit():
-            dane = dane[dane["wiek"] <= int(entry_max.get())]
+        if min_wiek is not None:
+            dane = dane[dane["wiek"] >= min_wiek]
+
+        if max_wiek is not None:
+            dane = dane[dane["wiek"] <= max_wiek]
 
     # =================
     # BMI
     # =================
     if "bmi" in dane.columns:
         try:
-            if entry_bmi_min and entry_bmi_min.get():
-                dane = dane[dane["bmi"] >= float(entry_bmi_min.get())]
+            min_bmi = safe_float(entry_bmi_min.get()) if entry_bmi_min else None
+            max_bmi = safe_float(entry_bmi_max.get()) if entry_bmi_max else None
 
-            if entry_bmi_max and entry_bmi_max.get():
-                dane = dane[dane["bmi"] <= float(entry_bmi_max.get())]
+            if min_bmi is not None:
+                dane = dane[dane["bmi"] >= min_bmi]
+
+            if max_bmi is not None:
+                dane = dane[dane["bmi"] <= max_bmi]
+
         except:
             log("Błąd filtrowania BMI", "ERROR")
 
@@ -193,7 +212,6 @@ def filtruj_dane(
         if nad:
             dane = dane[dane["nadcisnienie"].isin(nad)]
 
-    # zapis
     df_filtered = dane
 
     log(f"Filtrowanie -> {len(dane)} rekordów")
@@ -205,7 +223,6 @@ def filtruj_dane(
 # =================
 # WYSZUKIWANIE
 # =================
-
 def wyszukaj(search_entry, pokaz):
 
     dane = get_dane()
@@ -213,9 +230,9 @@ def wyszukaj(search_entry, pokaz):
     if dane is None or dane.empty:
         return
 
-    tekst = search_entry.get().lower()
+    tekst = search_entry.get().strip().lower()
 
-    if not tekst:
+    if not tekst or tekst == "szukaj...":
         pokaz(dane)
         return
 
@@ -233,17 +250,18 @@ def wyszukaj(search_entry, pokaz):
 # =================
 # RESET
 # =================
-
 def reset_filtry(
     var_k, var_m,
     var_cuk_typ1, var_cuk_typ2, var_cuk_brak,
     var_nad_tak, var_nad_nie,
     entry_min, entry_max,
     pokaz,
-    pokaz_stat
+    pokaz_stat,
+    entry_bmi_min, entry_bmi_max   # 🔥 NOWE
 ):
     global df_filtered
 
+    # checkboxy
     var_k.set(True)
     var_m.set(True)
 
@@ -254,8 +272,13 @@ def reset_filtry(
     var_nad_tak.set(True)
     var_nad_nie.set(True)
 
+    # zakres wieku
     entry_min.delete(0, "end")
     entry_max.delete(0, "end")
+
+    # 🔥 zakres BMI
+    entry_bmi_min.delete(0, "end")
+    entry_bmi_max.delete(0, "end")
 
     df_filtered = None
 
@@ -263,4 +286,4 @@ def reset_filtry(
         pokaz(df)
         pokaz_stat(df)
 
-        log("Reset OK")
+        log("Reset filtrów OK")

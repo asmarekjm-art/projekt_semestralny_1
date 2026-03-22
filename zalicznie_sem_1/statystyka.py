@@ -2,7 +2,6 @@
 # IMPORTY
 # =================
 import pandas as pd
-import numpy as np
 from scipy import stats
 from dane import get_dane
 
@@ -29,7 +28,7 @@ def statystyki_opisowe(df=None):
 
         stats_df = num.describe().round(2)
 
-        log("Statystyki opisowe OK", "SUCCESS")
+        log("Statystyki opisowe OK", "INFO")
         return stats_df
 
     except Exception as e:
@@ -38,7 +37,7 @@ def statystyki_opisowe(df=None):
 
 
 # =================
-# PASEK STATYSTYK (GUI)
+# PASEK STATYSTYK
 # =================
 def pokaz_statystyki(df, label):
 
@@ -47,6 +46,7 @@ def pokaz_statystyki(df, label):
         return
 
     try:
+        df = df.copy()
         liczba = len(df)
 
         wiek = "-"
@@ -61,12 +61,11 @@ def pokaz_statystyki(df, label):
         if "bmi" in df.columns:
             bmi = round(df["bmi"].mean(), 1)
 
-        if "cukrzyca_typ" in df.columns:
-            total = len(df)
-            cuk1 = round((df["cukrzyca_typ"] == "typ_1").sum() / total * 100, 1)
-            cuk2 = round((df["cukrzyca_typ"] == "typ_2").sum() / total * 100, 1)
+        if "cukrzyca_typ" in df.columns and liczba > 0:
+            cuk1 = round((df["cukrzyca_typ"] == "typ_1").sum() / liczba * 100, 1)
+            cuk2 = round((df["cukrzyca_typ"] == "typ_2").sum() / liczba * 100, 1)
 
-        if "nadcisnienie" in df.columns:
+        if "nadcisnienie" in df.columns and liczba > 0:
             nad = round((df["nadcisnienie"] == "tak").mean() * 100, 1)
 
         tekst = (
@@ -79,8 +78,7 @@ def pokaz_statystyki(df, label):
         )
 
         label.config(text=tekst)
-
-        log("Statystyki GUI OK", "INFO")
+        log("Statystyki GUI OK")
 
     except Exception as e:
         label.config(text="Błąd statystyk")
@@ -99,7 +97,9 @@ def statystyki_rozszerzone(df=None):
             log("Brak danych", "ERROR")
             return {}
 
+        df = df.copy()
         wyniki = {}
+        n = len(df)
 
         if "wiek" in df.columns:
             wyniki["sredni_wiek"] = round(df["wiek"].mean(), 1)
@@ -110,17 +110,16 @@ def statystyki_rozszerzone(df=None):
             wyniki["max_bmi"] = round(df["bmi"].max(), 1)
             wyniki["min_bmi"] = round(df["bmi"].min(), 1)
 
-        if "cukrzyca_typ" in df.columns:
-            total = len(df)
-            wyniki["cukrzyca_typ1_%"] = round((df["cukrzyca_typ"] == "typ_1").sum() / total * 100, 1)
-            wyniki["cukrzyca_typ2_%"] = round((df["cukrzyca_typ"] == "typ_2").sum() / total * 100, 1)
+        if "cukrzyca_typ" in df.columns and n > 0:
+            wyniki["cukrzyca_typ1_%"] = round((df["cukrzyca_typ"] == "typ_1").sum() / n * 100, 1)
+            wyniki["cukrzyca_typ2_%"] = round((df["cukrzyca_typ"] == "typ_2").sum() / n * 100, 1)
 
-        if "nadcisnienie" in df.columns:
+        if "nadcisnienie" in df.columns and n > 0:
             wyniki["nadcisnienie_%"] = round((df["nadcisnienie"] == "tak").mean() * 100, 1)
 
-        wyniki["liczba_pacjentow"] = len(df)
+        wyniki["liczba_pacjentow"] = n
 
-        log("Statystyki rozszerzone OK", "SUCCESS")
+        log("Statystyki rozszerzone OK")
         return wyniki
 
     except Exception as e:
@@ -129,7 +128,7 @@ def statystyki_rozszerzone(df=None):
 
 
 # =================
-# TEKST DO RAPORTU
+# TEKST RAPORTU
 # =================
 def generuj_tekst_raportu(df=None):
     try:
@@ -150,7 +149,7 @@ def generuj_tekst_raportu(df=None):
             f"Nadciśnienie: {stats_dict.get('nadcisnienie_%','-')}%\n"
         )
 
-        log("Raport OK", "SUCCESS")
+        log("Raport OK")
         return tekst
 
     except Exception as e:
@@ -159,7 +158,7 @@ def generuj_tekst_raportu(df=None):
 
 
 # =================
-# TEST T-STUDENTA
+# T-TEST
 # =================
 def test_t_studenta(df=None):
     try:
@@ -172,13 +171,15 @@ def test_t_studenta(df=None):
         if not {"plec", "bmi"}.issubset(df.columns):
             return None
 
+        df = df.copy()
+
         k = df[df["plec"] == "K"]["bmi"].dropna()
         m = df[df["plec"] == "M"]["bmi"].dropna()
 
         if k.empty or m.empty:
             return None
 
-        t, p = stats.ttest_ind(k, m)
+        t, p = stats.ttest_ind(k, m, equal_var=False)
 
         return {
             "t": round(t, 3),
@@ -192,7 +193,7 @@ def test_t_studenta(df=None):
 
 
 # =================
-# TEST CHI²
+# CHI²
 # =================
 def test_chi_kwadrat(df=None):
     try:
@@ -224,7 +225,7 @@ def test_chi_kwadrat(df=None):
 
 
 # =================
-# GAUSS (parametry)
+# GAUSS
 # =================
 def rozklad_gaussa_parametry(df=None):
     try:
